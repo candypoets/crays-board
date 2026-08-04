@@ -1,0 +1,86 @@
+appId: life.crays.board
+---
+# Invites vertical slice: seed the staff signer and venue through the dev-only
+# deep link, open the Invites destination, configure 7d claim expiry / 90d
+# membership / 5 max redemptions, double-tap Create (INVITE-03 repeat-tap
+# idempotency — verify-invite.mjs asserts exactly one invite marker), then
+# prove the QR result panel and badges and exercise Copy link.
+# Requires env from .qa/relay-screen-scenario.mjs: RELAY_URL, SERVICE_URL,
+# QA_NSEC (AWARD_ID/ITEM_ADDRESS/USER_PUBKEY are passed but unused here).
+- runFlow: launch.yaml
+- openLink: "craysboard://qa-seed?relay=${RELAY_URL}&service=${SERVICE_URL}&nsec=${QA_NSEC}"
+- extendedWaitUntil:
+    visible:
+      id: "orders-screen"
+    timeout: 60000
+# Reach Invites through the shell rail when it exists (tablet/compact); fall
+# back to the typed-route deep link on phone width.
+- runFlow:
+    when:
+      visible:
+        id: "nav-invites"
+    commands:
+      - tapOn:
+          id: "nav-invites"
+- runFlow:
+    when:
+      notVisible:
+        id: "nav-invites"
+    commands:
+      - openLink: "craysboard://invites"
+- extendedWaitUntil:
+    visible:
+      id: "invites-screen"
+    timeout: 30000
+# INVITE-01: configure 7d / 90d / 5 through the dropdowns.
+- tapOn:
+    id: "invite-expiry-field"
+- extendedWaitUntil:
+    visible:
+      id: "invite-option-expiry-7d"
+    timeout: 10000
+- tapOn:
+    id: "invite-option-expiry-7d"
+- tapOn:
+    id: "invite-duration-field"
+- extendedWaitUntil:
+    visible:
+      id: "invite-option-duration-90d"
+    timeout: 10000
+- tapOn:
+    id: "invite-option-duration-90d"
+- tapOn:
+    id: "invite-redemptions-field"
+- extendedWaitUntil:
+    visible:
+      id: "invite-option-redemptions-5"
+    timeout: 10000
+- tapOn:
+    id: "invite-option-redemptions-5"
+# INVITE-03: a deliberate double-tap must still create exactly one invite
+# (proved by verify-invite.mjs asserting exactly one [crays-board-invite]
+# marker and no second service write).
+- doubleTapOn:
+    id: "invite-create-button"
+- extendedWaitUntil:
+    visible:
+      id: "invite-result-panel"
+    timeout: 45000
+# INVITE-04: QR + badges from the real service response; no raw token shown.
+- assertVisible:
+    id: "invite-result-panel"
+- assertVisible:
+    id: "invite-qr"
+- assertVisible:
+    text: "Valid for 7 days"
+- assertVisible:
+    text: "5 uses"
+- assertVisible:
+    text: "90 days membership"
+- assertVisible:
+    id: "invite-share-button"
+- tapOn:
+    id: "invite-copy-button"
+- assertVisible:
+    text: "Copied"
+- takeScreenshot: 50-invites-result

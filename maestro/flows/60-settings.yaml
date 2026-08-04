@@ -1,0 +1,92 @@
+appId: life.crays.board
+---
+# Settings vertical slice (docs/screens/settings.md): seed the staff signer
+# and venue through the dev-only deep link, open Settings, edit the venue
+# profile description and save (one 30078 republish at the stable d), flip the
+# membership availability (one 30009 at the same d), then prove Payments
+# shows the honest "Not configured" and Room gateway shows exactly "Status
+# unavailable" (ROOM-02 — hardware health is never inferred from relay
+# records). The QA description literal must match .qa/verify-settings.mjs.
+# Requires env from .qa/relay-screen-scenario.mjs: RELAY_URL, SERVICE_URL,
+# QA_NSEC (plus the orders family vars the runner always passes).
+- runFlow: launch.yaml
+- openLink: "craysboard://qa-seed?relay=${RELAY_URL}&service=${SERVICE_URL}&nsec=${QA_NSEC}"
+- extendedWaitUntil:
+    visible:
+      id: "orders-screen"
+    timeout: 60000
+- openLink: "craysboard://settings"
+- extendedWaitUntil:
+    visible:
+      id: "settings-screen"
+    timeout: 30000
+# PROFILE-01: edit the description and save; "Saved" appears only after the
+# venue relay's affirmative acknowledgement.
+- extendedWaitUntil:
+    visible:
+      id: "settings-profile-save"
+    timeout: 45000
+- tapOn:
+    id: "settings-profile-description"
+- eraseText
+- inputText: "Updated by the Crays Board settings QA flow."
+- hideKeyboard
+# The multiline description grows the form and pushes Save below the fold;
+# scroll inside the profile form column before tapping.
+- swipe:
+    start: "57%, 80%"
+    end: "57%, 35%"
+- extendedWaitUntil:
+    visible:
+      id: "settings-profile-save"
+    timeout: 15000
+- tapOn:
+    id: "settings-profile-save"
+- extendedWaitUntil:
+    visible:
+      id: "settings-profile-saved"
+    timeout: 20000
+- takeScreenshot: 60-settings-profile-saved
+# MEMBER-02: flip availability; the toggle label follows the relay echo of
+# the same-d definition update.
+- tapOn:
+    id: "settings-nav-memberships"
+- extendedWaitUntil:
+    visible:
+      id: "settings-membership-card"
+    timeout: 20000
+- assertVisible:
+    text: "Available"
+- tapOn:
+    id: "settings-membership-toggle"
+- extendedWaitUntil:
+    visible:
+      text: "Unavailable"
+    timeout: 20000
+- takeScreenshot: 60-settings-membership-unavailable
+# PAYMENT-01: the service has no payment account for this venue — the honest
+# "Not configured", never a fake connected state.
+- tapOn:
+    id: "settings-nav-payments"
+- extendedWaitUntil:
+    visible:
+      id: "payments-status"
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      text: "Not configured"
+    timeout: 20000
+- takeScreenshot: 60-settings-payments-not-configured
+# ROOM-01/02: the signed manifest projects; gateway hardware reports exactly
+# "Status unavailable".
+- tapOn:
+    id: "settings-nav-room"
+- extendedWaitUntil:
+    visible:
+      id: "room-manifest"
+    timeout: 20000
+- assertVisible:
+    id: "room-gateway-status"
+- assertVisible:
+    text: "Status unavailable"
+- takeScreenshot: 60-settings-room

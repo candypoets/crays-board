@@ -1,0 +1,121 @@
+appId: life.crays.board
+---
+# People & roles: seed the staff signer and venue through the dev-only deep
+# link, deep-link to /people, prove the three derived statuses (PEOPLE-01/02),
+# revoke the active member's membership with the confirmation dialog
+# (PEOPLE-04, double-tap safe), edit the seeded role's permission matrix
+# (ROLE-01/02), and assign the role permanently to the expiring member
+# (ROLE-03). Relay truth is checked by .qa/verify-people.mjs.
+# Requires env from .qa/relay-screen-scenario.mjs: RELAY_URL, SERVICE_URL,
+# QA_NSEC (AWARD_ID/ITEM_ADDRESS/USER_PUBKEY are used by the orders flow).
+- runFlow: launch.yaml
+- openLink: "craysboard://qa-seed?relay=${RELAY_URL}&service=${SERVICE_URL}&nsec=${QA_NSEC}"
+- extendedWaitUntil:
+    visible:
+      id: "orders-screen"
+    timeout: 60000
+- openLink: "craysboard://people"
+- extendedWaitUntil:
+    visible:
+      id: "people-screen"
+    timeout: 60000
+# PEOPLE-01/02: the list derives from root admins + award holders with the
+# three deterministic statuses.
+- extendedWaitUntil:
+    visible: "QA Active Member"
+    timeout: 45000
+- assertVisible: "QA Expiring Member"
+- assertVisible: "QA Expired Member"
+- assertVisible: "Active"
+- assertVisible: "Expiring soon"
+- assertVisible: "Expired"
+- takeScreenshot: 40-people-list
+# PEOPLE-04: revoke users[0]'s membership. The dialog names the person, the
+# membership, and the venue; the double-tap proves in-flight idempotency
+# (verify-people.mjs asserts exactly one kind 5 for the award).
+- tapOn: "QA Active Member"
+- extendedWaitUntil:
+    visible:
+      id: "revoke-membership-button"
+    timeout: 15000
+- tapOn:
+    id: "revoke-membership-button"
+- extendedWaitUntil:
+    visible:
+      id: "revoke-confirm-button"
+    timeout: 10000
+# Maestro text matching is exact-match against a single node; the dialog body
+# is one long sentence, so use a regex for the membership name.
+- assertVisible:
+    text: ".*QA Membership.*"
+- doubleTapOn:
+    id: "revoke-confirm-button"
+- extendedWaitUntil:
+    visible: "Membership revoked"
+    timeout: 20000
+- takeScreenshot: 40-people-revoked
+# ROLE-01/02: edit the seeded role — toggle Posts on and Save. Save publishes
+# the same-d 30009 with the final permission set (verified on the relay).
+- tapOn:
+    id: "people-tab-roles"
+- extendedWaitUntil:
+    visible: "QA Events host"
+    timeout: 15000
+- tapOn: "QA Events host"
+- scrollUntilVisible:
+    element:
+      id: "permission-toggle-posts"
+    direction: DOWN
+- extendedWaitUntil:
+    visible:
+      id: "permission-toggle-posts"
+    timeout: 15000
+- tapOn:
+    id: "permission-toggle-posts"
+# scrollUntilVisible's center swipe does not scroll the role-editor column on
+# the tablet layout; swipe explicitly inside the center column (~50% width).
+- swipe:
+    start: "50%, 80%"
+    end: "50%, 35%"
+- extendedWaitUntil:
+    visible:
+      id: "save-role-button"
+    timeout: 15000
+- tapOn:
+    id: "save-role-button"
+- extendedWaitUntil:
+    visible: "Role saved"
+    timeout: 20000
+- takeScreenshot: 40-people-role-saved
+# ROLE-03: assign the role permanently to users[1] from their person detail
+# (pre-fills the assign form with their pubkey; blank expiry = permanent).
+- tapOn:
+    id: "people-tab-people"
+- runFlow:
+    when:
+      visible: "Back to people"
+    commands:
+      - tapOn: "Back to people"
+- extendedWaitUntil:
+    visible: "QA Expiring Member"
+    timeout: 15000
+- tapOn: "QA Expiring Member"
+- extendedWaitUntil:
+    visible:
+      id: "person-assign-role-button"
+    timeout: 15000
+# person-assign-role-button switches to the Roles tab with the Assign role
+# panel pre-filled; the confirm button is in the right-hand column, already
+# on screen — no swipe needed (a mid-screen swipe just scrolls the editor).
+- tapOn:
+    id: "person-assign-role-button"
+- extendedWaitUntil:
+    visible:
+      id: "assign-confirm-button"
+    timeout: 15000
+- tapOn:
+    id: "assign-confirm-button"
+- extendedWaitUntil:
+    visible: "Role assigned"
+    timeout: 20000
+- takeScreenshot: 40-people-assigned

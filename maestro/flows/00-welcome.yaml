@@ -1,0 +1,14 @@
+appId: life.crays.board
+---
+# ENTRY-01: cold launch with no identity shows the welcome surface with
+# Create venue primary and Sign in secondary. See docs/screens/welcome.md.
+- runFlow: launch.yaml
+- assertVisible:
+    id: "welcome-screen"
+- assertVisible:
+    id: "create-venue-button"
+- assertVisible: "Create venue"
+- assertVisible:
+    id: "sign-in-button"
+- assertVisible: "Sign in"
+- takeScreenshot: 00-welcome

@@ -1,0 +1,127 @@
+appId: life.crays.board
+---
+# Check-in vertical slice: seed the staff signer and venue through the dev-only
+# deep link, open the check-in screen, then submit the three seeded kind 27236
+# presentations through manual code entry (EVENT-10/11/12):
+#   1. valid           -> "Entry accepted", exactly one 37237 fulfilled/event
+#   2. already-used    -> "Already checked in", zero writes
+#   3. wrong event     -> "This pass is for a different event.", zero writes
+# The presentation payloads are fixture data in the scenario state file; the
+# scenario runner injects them as Maestro env (envFromState) because the
+# Maestro JS sandbox has no host IO. Payloads are typed into the input, never
+# logged.
+# Requires env from .qa/relay-screen-scenario.mjs: RELAY_URL, SERVICE_URL,
+# QA_NSEC, PRESENTATION_VALID, PRESENTATION_FULFILLED, PRESENTATION_WRONG_EVENT.
+- runFlow: launch.yaml
+- openLink: "craysboard://qa-seed?relay=${RELAY_URL}&service=${SERVICE_URL}&nsec=${QA_NSEC}"
+- extendedWaitUntil:
+    visible:
+      id: "orders-screen"
+    timeout: 60000
+- openLink: "craysboard://check-in"
+- extendedWaitUntil:
+    visible:
+      id: "check-in-screen"
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: "check-in-event-title"
+    timeout: 45000
+- extendedWaitUntil:
+    visible:
+      id: "check-in-progress"
+    timeout: 45000
+- assertVisible:
+    text: "1 of 2 checked in"
+- takeScreenshot: 31-check-in-ready
+# EVENT-10: valid presentation -> Entry accepted, counts advance from relay truth.
+- tapOn:
+    id: "check-in-code-input"
+- inputText: "${PRESENTATION_VALID}"
+- hideKeyboard
+# The long JSON payload grows the multiline input and pushes the submit
+# button below the fold in the right-hand column; close the keyboard and
+# scroll the column to reach it.
+- swipe:
+    start: "70%, 80%"
+    end: "70%, 30%"
+- extendedWaitUntil:
+    visible:
+      id: "check-in-submit"
+    timeout: 15000
+- tapOn:
+    id: "check-in-submit"
+- extendedWaitUntil:
+    visible:
+      text: "Entry accepted"
+    timeout: 20000
+- assertVisible:
+    id: "check-in-result-success"
+- extendedWaitUntil:
+    visible:
+      text: "2 of 2 checked in"
+    timeout: 30000
+- takeScreenshot: 31-check-in-accepted
+# EVENT-12: the already-fulfilled presentation -> specific rejection, no write.
+- tapOn:
+    id: "check-in-code-input"
+- inputText: "${PRESENTATION_FULFILLED}"
+- hideKeyboard
+# The long JSON payload grows the multiline input and pushes the submit
+# button below the fold in the right-hand column; close the keyboard and
+# scroll the column to reach it.
+- swipe:
+    start: "70%, 80%"
+    end: "70%, 30%"
+- extendedWaitUntil:
+    visible:
+      id: "check-in-submit"
+    timeout: 15000
+- tapOn:
+    id: "check-in-submit"
+- extendedWaitUntil:
+    visible:
+      text: "Already checked in"
+    timeout: 60000
+- assertVisible:
+    id: "check-in-result-error"
+- takeScreenshot: 31-check-in-already-checked-in
+# EVENT-11: the wrong-event presentation -> specific rejection, no write.
+- tapOn:
+    id: "check-in-code-input"
+- inputText: "${PRESENTATION_WRONG_EVENT}"
+- hideKeyboard
+# The long JSON payload grows the multiline input and pushes the submit
+# button below the fold in the right-hand column; close the keyboard and
+# scroll the column to reach it.
+- swipe:
+    start: "70%, 80%"
+    end: "70%, 30%"
+- extendedWaitUntil:
+    visible:
+      id: "check-in-submit"
+    timeout: 15000
+- tapOn:
+    id: "check-in-submit"
+# First-run signature verification can take tens of seconds on the emulator.
+# Wait on the structural result testID first: Maestro text polling missed the
+# rejection string on-device even while it was rendered (stale hierarchy), so
+# gate on the testID and assert the exact reason afterwards.
+- extendedWaitUntil:
+    visible:
+      id: "check-in-result-error"
+    timeout: 60000
+- assertVisible:
+    text: "This pass is for a different event."
+- takeScreenshot: 31-check-in-wrong-event
+# EVENT-09: the scanner path is gated and honest about this build.
+- scrollUntilVisible:
+    element:
+      id: "check-in-scan-button"
+- tapOn:
+    id: "check-in-scan-button"
+- assertVisible:
+    id: "check-in-camera-unavailable"
+- assertVisible:
+    text: "Camera not available in this build"
+- takeScreenshot: 31-check-in-camera-unavailable
