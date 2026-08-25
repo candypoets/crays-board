@@ -34,6 +34,10 @@ input and the sole admin named by the resulting root-signed NIP-97 anchor.
 - Metro serving the dev client on 8090, one Android device. The app resolves
   the coordinator at `http://10.0.2.2:7823` (QA Android default) or
   `EXPO_PUBLIC_CRAYS_COORDINATOR_URL`.
+- Preview/test and release builds use `https://coordinator.nuts.cash` by
+  default. `EXPO_PUBLIC_CRAYS_COORDINATOR_URL` is an explicit override. The
+  automated suite sets it to its owned local coordinator because its scenarios
+  create and tear down venue relays.
 - Emulator URL contract: the coordinator verifies NIP-98 `u` tags against its
   own configured base URL (`NIP98_BASE_URL`), so the app signs the canonical
   host-loopback form (`127.0.0.1`) while fetching through the `10.0.2.2`

@@ -15,8 +15,9 @@ import { toBase64Url, type RelayRequest } from "./model";
  * with u/method/payload tags, payload = sha256 hex of the exact body.
  *
  * Base URL resolution: EXPO_PUBLIC_CRAYS_COORDINATOR_URL when set (bundled by
- * Metro), else the Android emulator loopback alias in dev builds, else the
- * production coordinator.
+ * Metro), otherwise the public production coordinator. Local QA and
+ * development coordinators must be explicit so a build never silently targets
+ * a stale loopback service.
  */
 
 export type CoordinatorRelay = {
@@ -27,14 +28,11 @@ export type CoordinatorRelay = {
   base_url?: string;
 };
 
-const PRODUCTION_COORDINATOR = "https://coordinator.crays.life";
+const PRODUCTION_COORDINATOR = "https://coordinator.nuts.cash";
 
 export function coordinatorBaseUrl(): string {
   const fromEnv = process.env.EXPO_PUBLIC_CRAYS_COORDINATOR_URL;
   if (typeof fromEnv === "string" && fromEnv.length > 0) return fromEnv.replace(/\/+$/, "");
-  if (__DEV__) {
-    return Platform.OS === "android" ? "http://10.0.2.2:7798" : "http://127.0.0.1:7798";
-  }
   return PRODUCTION_COORDINATOR;
 }
 
