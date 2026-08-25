@@ -36,6 +36,7 @@ yarn-error.*
 # QA / Maestro local artifacts
 .maestro/
 .qa/*.state.json
+design/.ux-map-pending/
 
 # OS
 .DS_Store

@@ -51,7 +51,7 @@ export default function MoreRoute() {
     ] as const
   )
     .filter((row) => visible.includes(row.id))
-    .map((row) => ({ ...row, onPress: () => router.push(`/${row.id}` as never) }));
+    .map((row) => ({ ...row, onPress: () => router.replace(`/${row.id}` as never) }));
 
   const accountRows: MoreRow[] = [
     {
@@ -77,7 +77,7 @@ export default function MoreRoute() {
       accessibilityRole="button"
       accessibilityLabel={row.label}
       onPress={row.onPress}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      style={styles.row}
     >
       <View style={styles.rowIcon}>
         <MaterialCommunityIcons name={row.icon} size={22} color={colors.pink} />
@@ -110,7 +110,7 @@ export default function MoreRoute() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 24, gap: 22 },
+  screen: { flex: 1, paddingHorizontal: 16, paddingTop: 18, gap: 22, width: "100%", maxWidth: 720, alignSelf: "center" },
   section: { gap: 6 },
   sectionLabel: {
     color: colors.inkMuted,

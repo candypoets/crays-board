@@ -12,7 +12,13 @@ Staff identity (QA admin key) with venue authority on an isolated venue relay pr
 
 ## Starting truth
 
-- Isolated relay `craysboardqa-venue-<run>` with: venue profile `30078` (`d=nuts-community-profile`, `type=hospitality`, admin-signed), product definition `30009` (admin-signed), and one issuer-signed kind `8` award — the shared venue fixture family the harness stages for every relay scenario. The invite HTTP service is running at the relay container's base URL; the bootstrap invite-smoke token lives in scenario state (never logged).
+- Isolated relay `craysboardqa-venue-<run>` with its NIP-11 root key,
+  root-signed `31727` community anchor, root-authored invite-membership, venue
+  profile `30078`, one anchor-admin-signed kind `30402` product listing, and
+  one delegated-issuer-signed kind `8` award — the shared venue fixture
+  family. The invite HTTP service is running at the relay container's base
+  URL; the bootstrap invite-smoke token lives only in the mode-`0600` scenario
+  state and is never logged.
 - App installed, state cleared, Metro on 8090, one Android device.
 
 ## User action
@@ -37,7 +43,10 @@ Open the seed deep link (lands on Orders), open the Invites destination, set **C
 ## Forbidden result
 
 - No request leaves the device before the Create tap; no second `POST /invites` from a repeat tap while one intent is in flight.
-- No raw invite token in logcat, QA state, or on screen (no separate token display; QR/share/copy carry only the full redeem URL).
+- No raw invite token in logcat, screenshots, markers, or a separate on-screen
+  field; QR/share/copy carry only the full redeem URL. The harness's scoped
+  bootstrap token is confined to its mode-`0600` state file and removed at
+  teardown.
 - No generic QR or fake success before the service returns a real token; no result presented for an HTTP error or rejected authorization.
 - No NIP-98 event published to any relay (it is HTTP authorization only); no write to any other venue's relay; no nsec/private hex anywhere.
 

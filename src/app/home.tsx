@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState, type ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { Badge, Button, EmptyState, Panel } from "@/components/ui";
 import { useHomeSummary } from "@/home/useHomeSummary";
@@ -50,6 +50,7 @@ function SummaryCard({
   onPress,
   children,
   wide,
+  style,
 }: {
   testID: string;
   icon: IconName;
@@ -57,6 +58,7 @@ function SummaryCard({
   onPress?: () => void;
   children: ReactNode;
   wide?: boolean;
+  style?: StyleProp<ViewStyle>;
 }) {
   return (
     <Pressable
@@ -65,7 +67,7 @@ function SummaryCard({
       accessibilityLabel={title}
       disabled={!onPress}
       onPress={onPress}
-      style={({ pressed }) => [styles.card, wide && styles.cardWide, pressed && styles.pressed]}
+      style={[styles.card, wide && styles.cardWide, style]}
     >
       <View style={styles.cardHeader}>
         <View style={styles.cardIconTile}>
@@ -81,10 +83,21 @@ function SummaryCard({
   );
 }
 
+function LiveSignal({ label, value, attention = false }: { label: string; value: string; attention?: boolean }) {
+  return (
+    <View style={styles.liveSignal}>
+      <Text style={styles.liveSignalLabel}>{label}</Text>
+      <Text style={[styles.liveSignalValue, attention && styles.attentionValue]} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 function HomeSummaryView({ summary, permissions }: { summary: HomeSummary; permissions: string[] }) {
   const router = useRouter();
   const breakpoint = useBreakpoint();
-  const phone = breakpoint === "phone";
+  const tablet = breakpoint === "tablet";
   const { orders, members, nextEvent, unavailableMenuCount } = summary;
 
   const quickActions: { testID: string; label: string; icon: IconName; permission: string; href: string }[] = [
@@ -104,7 +117,7 @@ function HomeSummaryView({ summary, permissions }: { summary: HomeSummary; permi
       { testID: "home-checklist-members", label: "Add members", done: summary.checklist.membersDone, href: "/people" },
     ];
     return (
-      <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, !phone && styles.contentTablet]}>
+      <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, tablet && styles.contentTablet]}>
         <Panel testID="home-setup-checklist" style={styles.checklist}>
           <Text style={styles.checklistTitle}>Set up your venue</Text>
           <Text style={styles.checklistBody}>
@@ -117,8 +130,8 @@ function HomeSummaryView({ summary, permissions }: { summary: HomeSummary; permi
               testID={item.testID}
               accessibilityRole="button"
               accessibilityLabel={item.label}
-              onPress={() => router.push(item.href as never)}
-              style={({ pressed }) => [styles.checklistRow, pressed && styles.pressed]}
+              onPress={() => router.replace(item.href as never)}
+              style={styles.checklistRow}
             >
               <MaterialCommunityIcons
                 name={item.done ? "check-circle-outline" : "circle-outline"}
@@ -133,7 +146,7 @@ function HomeSummaryView({ summary, permissions }: { summary: HomeSummary; permi
             testID="home-checklist-settings"
             label="Open settings"
             tone="secondary"
-            onPress={() => router.push("/settings" as never)}
+            onPress={() => router.replace("/settings" as never)}
           />
         </Panel>
       </ScrollView>
@@ -142,90 +155,153 @@ function HomeSummaryView({ summary, permissions }: { summary: HomeSummary; permi
 
   const stageLine = `New ${orders.byStage.pending} · Accepted ${orders.byStage.accepted} · Preparing ${orders.byStage.processing} · Ready ${orders.byStage.ready}`;
 
-  return (
-    <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, !phone && styles.contentTablet]}>
-      <SummaryCard
-        testID="home-orders-card"
-        icon="receipt-text-outline"
-        title="Orders"
-        wide
-        onPress={() => router.push("/orders")}
-      >
-        <Text style={styles.cardValue}>
-          {orders.open === 0 ? "No open orders" : plural(orders.open, "open order", "open orders")}
-        </Text>
-        <Text style={styles.cardMeta}>{stageLine}</Text>
-        {orders.open > 0 ? (
-          <Text style={styles.cardMeta}>Oldest wait {formatWait(orders.oldestWaitSeconds)}</Text>
-        ) : null}
-      </SummaryCard>
+  const ordersCard = (
+    <SummaryCard
+      testID="home-orders-card"
+      icon="receipt-text-outline"
+      title="Orders"
+      style={tablet ? styles.tabletOperationsCard : undefined}
+      onPress={() => router.replace("/orders")}
+    >
+      <Text style={styles.cardValue}>
+        {orders.open === 0 ? "No open orders" : plural(orders.open, "open order", "open orders")}
+      </Text>
+      <Text style={styles.cardMeta}>{stageLine}</Text>
+      {orders.open > 0 ? <Text style={styles.cardMeta}>Oldest wait {formatWait(orders.oldestWaitSeconds)}</Text> : null}
+    </SummaryCard>
+  );
 
-      {nextEvent ? (
-        <SummaryCard
-          testID="home-event-card"
-          icon="calendar-blank-outline"
-          title={eventDayLabel(nextEvent.startsAt, nextEvent.happeningNow)}
-          onPress={() => router.push("/events" as never)}
-        >
-          <Text style={styles.cardValue} numberOfLines={2}>
-            {nextEvent.title ?? "Untitled event"}
-          </Text>
-          <Text style={styles.cardMeta}>Starts {formatStartTime(nextEvent.startsAt)}</Text>
-          <View style={styles.cardAction}>
-            <Button
-              testID="home-checkin-button"
-              label="Check in"
-              compact
-              onPress={() => router.push("/events" as never)}
-            />
+  const eventCard = nextEvent ? (
+    <SummaryCard
+      testID="home-event-card"
+      icon="calendar-blank-outline"
+      title={eventDayLabel(nextEvent.startsAt, nextEvent.happeningNow)}
+      style={tablet ? styles.tabletOperationsCard : undefined}
+      onPress={() => router.replace("/events" as never)}
+    >
+      <Text style={styles.cardValue} numberOfLines={2}>
+        {nextEvent.title ?? "Untitled event"}
+      </Text>
+      <Text style={styles.cardMeta}>Starts {formatStartTime(nextEvent.startsAt)}</Text>
+      <View style={styles.cardAction}>
+        <Button
+          testID="home-checkin-button"
+          label="Check in"
+          compact
+          onPress={() => router.replace("/events" as never)}
+        />
+      </View>
+    </SummaryCard>
+  ) : null;
+
+  const menuCard = (
+    <SummaryCard
+      testID="home-menu-card"
+      icon="silverware-fork-knife"
+      title="Menu"
+      style={tablet ? styles.tabletCard : undefined}
+      onPress={() => router.replace("/menu" as never)}
+    >
+      <Text style={[styles.cardValue, unavailableMenuCount > 0 && styles.attentionValue]}>
+        {unavailableMenuCount === 0
+          ? "Menu fully available"
+          : plural(unavailableMenuCount, "item unavailable", "items unavailable")}
+      </Text>
+      {unavailableMenuCount > 0 ? (
+        <Text style={styles.cardMeta}>Guests cannot order unavailable items.</Text>
+      ) : null}
+    </SummaryCard>
+  );
+
+  const membersCard = (
+    <SummaryCard
+      testID="home-members-card"
+      icon="account-group-outline"
+      title="Members"
+      style={tablet ? styles.tabletCard : undefined}
+      onPress={() => router.replace("/people" as never)}
+    >
+      <Text style={styles.cardValue}>
+        {members.active === 0 ? "No active members" : plural(members.active, "active member", "active members")}
+      </Text>
+      {members.expiringSoon > 0 ? (
+        <Text style={styles.cardMeta}>{plural(members.expiringSoon, "expiring soon", "expiring soon")}</Text>
+      ) : null}
+    </SummaryCard>
+  );
+
+  const actions = allowedActions.length > 0 ? (
+    <View style={styles.quickActions}>
+      {allowedActions.map((action) => (
+        <Button
+          key={action.testID}
+          testID={action.testID}
+          label={action.label}
+          icon={action.icon}
+          tone="secondary"
+          onPress={() => router.replace(action.href as never)}
+        />
+      ))}
+    </View>
+  ) : null;
+
+  if (tablet) {
+    return (
+      <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, styles.contentTablet]}>
+        <Panel testID="home-live-service-strip" style={styles.liveStrip}>
+          <LiveSignal
+            label="Open queue"
+            value={orders.open === 0 ? "Clear" : plural(orders.open, "order", "orders")}
+            attention={orders.open > 0}
+          />
+          <LiveSignal
+            label="Oldest wait"
+            value={orders.open > 0 ? formatWait(orders.oldestWaitSeconds) : "—"}
+            attention={orders.oldestWaitSeconds >= 900}
+          />
+          <LiveSignal
+            label="Next service"
+            value={nextEvent ? `${eventDayLabel(nextEvent.startsAt, nextEvent.happeningNow)} · ${formatStartTime(nextEvent.startsAt)}` : "No event"}
+          />
+          <LiveSignal
+            label="Needs attention"
+            value={unavailableMenuCount > 0 ? plural(unavailableMenuCount, "menu item", "menu items") : "Nothing"}
+            attention={unavailableMenuCount > 0}
+          />
+        </Panel>
+
+        <View style={styles.tabletWorkspace}>
+          <View testID="home-operations-region" style={styles.operationsRegion}>
+            <View style={styles.regionHeading}>
+              <Text style={styles.regionEyebrow}>OPERATE NOW</Text>
+              <Text style={styles.regionTitle}>Service floor</Text>
+            </View>
+            <View style={styles.operationsCards}>
+              {ordersCard}
+              {eventCard}
+            </View>
           </View>
-        </SummaryCard>
-      ) : null}
-
-      <SummaryCard
-        testID="home-menu-card"
-        icon="silverware-fork-knife"
-        title="Menu"
-        onPress={() => router.push("/menu" as never)}
-      >
-        <Text style={[styles.cardValue, unavailableMenuCount > 0 && styles.attentionValue]}>
-          {unavailableMenuCount === 0
-            ? "Menu fully available"
-            : plural(unavailableMenuCount, "item unavailable", "items unavailable")}
-        </Text>
-        {unavailableMenuCount > 0 ? (
-          <Text style={styles.cardMeta}>Guests cannot order unavailable items.</Text>
-        ) : null}
-      </SummaryCard>
-
-      <SummaryCard
-        testID="home-members-card"
-        icon="account-group-outline"
-        title="Members"
-        onPress={() => router.push("/people" as never)}
-      >
-        <Text style={styles.cardValue}>
-          {members.active === 0 ? "No active members" : plural(members.active, "active member", "active members")}
-        </Text>
-        {members.expiringSoon > 0 ? (
-          <Text style={styles.cardMeta}>{plural(members.expiringSoon, "expiring soon", "expiring soon")}</Text>
-        ) : null}
-      </SummaryCard>
-
-      {allowedActions.length > 0 ? (
-        <View style={styles.quickActions}>
-          {allowedActions.map((action) => (
-            <Button
-              key={action.testID}
-              testID={action.testID}
-              label={action.label}
-              icon={action.icon}
-              tone="secondary"
-              onPress={() => router.push(action.href as never)}
-            />
-          ))}
+          <View testID="home-attention-region" style={styles.attentionRegion}>
+            <View style={styles.regionHeading}>
+              <Text style={styles.regionEyebrow}>ATTENTION</Text>
+              <Text style={styles.regionTitle}>Keep the venue ready</Text>
+            </View>
+            {menuCard}
+            {membersCard}
+          </View>
         </View>
-      ) : null}
+        {actions}
+      </ScrollView>
+    );
+  }
+
+  return (
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      {ordersCard}
+      {eventCard}
+      {menuCard}
+      {membersCard}
+      {actions}
     </ScrollView>
   );
 }
@@ -233,6 +309,7 @@ function HomeSummaryView({ summary, permissions }: { summary: HomeSummary; permi
 function HomeSubscription({ permissions, onRetry }: { permissions: string[]; onRetry: () => void }) {
   const { status, live, summary, error } = useHomeSummary();
   const { venue } = useVenue();
+  const breakpoint = useBreakpoint();
 
   if (status === "error") {
     return (
@@ -258,12 +335,12 @@ function HomeSubscription({ permissions, onRetry }: { permissions: string[]; onR
   const host = venue?.relayUrl.replace(/^wss?:\/\//, "") ?? "";
   return (
     <View style={styles.ready}>
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, breakpoint === "phone" && styles.headerRowPhone]}>
         <View style={styles.headerCopy}>
           <Text testID="home-venue-name" style={styles.venueName} numberOfLines={1}>
             {summary.venueName ?? host}
           </Text>
-          <Text style={styles.headerMeta}>{host}</Text>
+          <Text style={styles.headerMeta}>Connected venue</Text>
         </View>
         <Badge label={live ? "Live" : "Offline"} tone={live ? "success" : "warning"} />
       </View>
@@ -319,12 +396,51 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 12,
   },
+  headerRowPhone: { paddingHorizontal: 16, paddingTop: 16 },
   headerCopy: { flex: 1, gap: 2 },
   venueName: { color: colors.ink, fontSize: 24, lineHeight: 30, fontWeight: "800", letterSpacing: -0.4 },
   headerMeta: { color: colors.inkMuted, fontSize: 13, lineHeight: 18 },
   scroll: { flex: 1 },
   content: { padding: 20, gap: 14, paddingBottom: 32 },
-  contentTablet: { maxWidth: 980, width: "100%", alignSelf: "center", flexDirection: "row", flexWrap: "wrap" },
+  contentTablet: { maxWidth: 1500, width: "100%", alignSelf: "center" },
+  liveStrip: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    padding: 0,
+  },
+  liveSignal: {
+    flex: 1,
+    minWidth: 0,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 4,
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
+  },
+  liveSignalLabel: { color: colors.inkMuted, fontSize: 12, lineHeight: 16, fontWeight: "700" },
+  liveSignalValue: { color: colors.ink, fontSize: 17, lineHeight: 22, fontWeight: "800" },
+  tabletWorkspace: { flexDirection: "row", alignItems: "stretch", gap: 18 },
+  operationsRegion: {
+    flex: 1.55,
+    minWidth: 0,
+    gap: 12,
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceWarm,
+  },
+  attentionRegion: {
+    flex: 0.85,
+    minWidth: 0,
+    gap: 12,
+    padding: 18,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.paper,
+  },
+  regionHeading: { gap: 2, marginBottom: 2 },
+  regionEyebrow: { color: colors.pinkDark, fontSize: 11, lineHeight: 15, fontWeight: "800", letterSpacing: 1.2 },
+  regionTitle: { color: colors.ink, fontSize: 20, lineHeight: 26, fontWeight: "800" },
   card: {
     flexGrow: 1,
     flexBasis: 300,
@@ -337,6 +453,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cardWide: { flexBasis: "100%" },
+  tabletCard: { flexBasis: "auto", flexGrow: 0, width: "100%" },
+  operationsCards: { flexDirection: "row", alignItems: "stretch", gap: 12 },
+  tabletOperationsCard: { flex: 1, flexBasis: 0, minWidth: 0 },
   pressed: { opacity: 0.78 },
   cardHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   cardIconTile: {

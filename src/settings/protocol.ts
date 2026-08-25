@@ -1,15 +1,14 @@
 import type { EventTemplate } from "nostr-tools";
 
-import { KIND_DEFINITION, KIND_VENUE_PROFILE } from "@/nostr/protocol";
+import { KIND_BADGE_DEFINITION, KIND_VENUE_PROFILE } from "@/nostr/protocol";
 
 /**
  * Settings write contract (PRD §8.9, QA_WORKFLOWS PROFILE/MEMBER/ROOM).
  *
  * - Venue profile: kind 30078 with d=nuts-community-profile, republished in
  *   place to the venue relay only.
- * - Memberships: kind 30009 definitions (type=membership, t=membership,
- *   t=sellable) edited in place — every update reuses the stable d
- *   (venue-commerce-nip §3.1 update rule).
+ * - Memberships: NIP-97 kind 30009 definitions (t=membership topic, NIP-99
+ *   price tag) edited in place — every update reuses the stable d.
  * - Room manifest: read-only in this slice (life.crays/room/v1, published by
  *   the venue authority out of band).
  *
@@ -90,7 +89,7 @@ export function buildVenueProfile(draft: ProfileDraft, venueName?: string): Even
 }
 
 export type MembershipDraft = {
-  /** Stable definition identifier — edits must reuse it (venue-commerce-nip §3.1). */
+  /** Stable definition identifier — edits must reuse it (NIP-01 addressable update rule). */
   d: string;
   name: string;
   description: string;
@@ -116,27 +115,27 @@ export function validateMembershipDraft(draft: MembershipDraft): string | null {
 }
 
 /**
- * Builds the sellable membership definition per venue-commerce-nip §3.4:
- * type/t=membership, t=sellable, positive price/currency, billing period, and
- * availability. Callers pass the existing d for in-place edits (MEMBER-02).
+ * Builds the NIP-97 membership definition: the membership `t` topic, a NIP-99
+ * `price` tag (amount, currency, `month`/`year` recurrence — absent for
+ * one-time plans), and availability. Callers pass the existing d for in-place
+ * edits (MEMBER-02).
  */
 export function buildMembershipDefinition(draft: MembershipDraft): EventTemplate {
   const invalid = validateMembershipDraft(draft);
   if (invalid) throw new Error(invalid);
+  const recurrence = draft.period === "monthly" ? "month" : draft.period === "yearly" ? "year" : undefined;
+  const price = ["price", draft.price.trim(), draft.currency.trim().toUpperCase()];
+  if (recurrence) price.push(recurrence);
   const tags: string[][] = [
     ["d", draft.d],
-    ["type", "membership"],
     ["t", "membership"],
-    ["t", "sellable"],
     ["name", draft.name.trim()],
-    ["price", draft.price.trim()],
-    ["currency", draft.currency.trim().toUpperCase()],
-    ["period", draft.period],
+    price,
     ["availability", draft.availability],
   ];
   if (draft.description.trim()) tags.push(["description", draft.description.trim()]);
   return {
-    kind: KIND_DEFINITION,
+    kind: KIND_BADGE_DEFINITION,
     created_at: Math.floor(Date.now() / 1000),
     content: "",
     tags,

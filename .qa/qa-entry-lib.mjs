@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runAgentDeviceFlow } from './agent-device-runner.mjs';
 
 export const PROJECT_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 export const APP_ID = 'life.crays.board';
@@ -28,13 +29,9 @@ export function bootstrapEntryQa(scenario) {
   // QA state carries only public-safe values: app id, scenario name, timestamps.
   // Never write keys, tokens, URLs with credentials, or presentation payloads here.
   const state = { appId: APP_ID, scenario, startedAt: new Date().toISOString() };
-  writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`);
+  writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
+  chmodSync(STATE_FILE, 0o600);
   console.log(`QA bootstrap ready: ${scenario}`);
-}
-
-export function runMaestro(flow) {
-  const maestro = process.env.MAESTRO_CLI || 'maestro';
-  run(maestro, ['test', flow]);
 }
 
 export function readLogcat() {
@@ -75,7 +72,7 @@ export function readQaState() {
 export function runScreenScenario({ flow, scenario, verify }) {
   bootstrapEntryQa(scenario);
   try {
-    runMaestro(flow);
+    runAgentDeviceFlow({ flow, scenario });
     if (verify) verify();
     console.log(`QA PASS: ${scenario}`);
   } finally {

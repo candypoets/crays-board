@@ -22,13 +22,17 @@ import {
   assert,
   createRelay,
   emulatorUrl,
+  entitlementAwardTags,
   getRelaySecrets,
+  KIND_LISTING,
   loadKeys,
   makePool,
   nip98Header,
   nowSeconds,
+  productListingTags,
   publishUntilStored,
   requireCoordinator,
+  resolveCommunityBootstrap,
   signEvent,
   sleep,
   waitRelayRunning,
@@ -76,6 +80,17 @@ writeState({
 
 const pool = makePool();
 
+const secrets = await getRelaySecrets(created.id, keys);
+const issuerSecret = secrets.badge_issuer_secret_key;
+if (!/^[0-9a-f]{64}$/i.test(issuerSecret || '')) throw new Error('relay did not expose a badge issuer secret');
+const issuerPubkey = signEvent({ kind: 1 }, issuerSecret).pubkey;
+const community = await resolveCommunityBootstrap({
+  pool,
+  relayUrl: relay.relay_url,
+  expectedAdmins: [keys.admin.pub],
+  expectedIssuerPubkey: issuerPubkey,
+});
+
 // Invite service smoke: prove the scoped service mints a signed token before
 // the scenario runs (token stored for later invite scenarios, never logged).
 const inviteEndpoint = `${relay.base_url}/invites`;
@@ -118,49 +133,33 @@ const venueProfile = signEvent(
 );
 await publish(venueProfile, 'venue hospitality profile (30078/nuts-community-profile)');
 
-// b. Sellable single-use product definition (available) per
-// venue-commerce-nip §3.1/§3.2, signed by the venue admin authority.
+// b. Sellable NIP-99 product listing, signed by an anchor admin.
 const product = signEvent(
   {
-    kind: 30009,
-    tags: [
-      ['d', itemD],
-      ['type', 'food'],
-      ['t', 'food'],
-      ['t', 'sellable'],
-      ['name', `QA Miso aubergine ${run}`],
-      ['price', '9.50'],
-      ['currency', 'EUR'],
-      ['max_uses', '1'],
-      ['availability', 'available'],
-    ],
+    kind: KIND_LISTING,
+    tags: productListingTags({ d: itemD, title: `QA Miso aubergine ${run}`, price: '9.50' }),
   },
   keys.admin.priv,
 );
-await publish(product, 'sellable product definition (30009)');
-const productAddress = `30009:${keys.admin.pub}:${itemD}`;
+await publish(product, 'sellable product listing (30402)');
+const productAddress = `${KIND_LISTING}:${keys.admin.pub}:${itemD}`;
 
 // c. One unavailable menu item (HOME-01 menu attention count). Never awarded,
 // so it cannot create an order.
 const unavailableProduct = signEvent(
   {
-    kind: 30009,
-    tags: [
-      ['d', unavailableD],
-      ['type', 'food'],
-      ['t', 'food'],
-      ['t', 'sellable'],
-      ['name', `QA John Dory ${run}`],
-      ['price', '24.00'],
-      ['currency', 'EUR'],
-      ['max_uses', '1'],
-      ['availability', 'unavailable'],
-    ],
+    kind: KIND_LISTING,
+    tags: productListingTags({
+      d: unavailableD,
+      title: `QA John Dory ${run}`,
+      price: '24.00',
+      availability: 'unavailable',
+    }),
   },
   keys.admin.priv,
 );
-await publish(unavailableProduct, 'unavailable product definition (30009)');
-const unavailableAddress = `30009:${keys.admin.pub}:${unavailableD}`;
+await publish(unavailableProduct, 'unavailable product listing (30402)');
+const unavailableAddress = `${KIND_LISTING}:${keys.admin.pub}:${unavailableD}`;
 
 // d. Sellable membership definition + one membership award expiring in 10
 // days (HOME-01 member counts: 1 active, 1 expiring soon).
@@ -169,13 +168,9 @@ const membership = signEvent(
     kind: 30009,
     tags: [
       ['d', membershipD],
-      ['type', 'membership'],
       ['t', 'membership'],
-      ['t', 'sellable'],
       ['name', `QA Membership ${run}`],
-      ['price', '120.00'],
-      ['currency', 'EUR'],
-      ['period', 'yearly'],
+      ['price', '120.00', 'EUR', 'year'],
       ['availability', 'available'],
     ],
   },
@@ -184,20 +179,16 @@ const membership = signEvent(
 await publish(membership, 'membership definition (30009)');
 const membershipAddress = `30009:${keys.admin.pub}:${membershipD}`;
 
-const secrets = await getRelaySecrets(created.id, keys);
-const issuerSecret = secrets.badge_issuer_secret_key;
-if (!/^[0-9a-f]{64}$/i.test(issuerSecret || '')) throw new Error('relay did not expose a badge issuer secret');
-const issuerPubkey = signEvent({ kind: 1 }, issuerSecret).pubkey;
-
 const memberExpiration = nowSeconds() + 10 * 86400;
 const membershipAward = signEvent(
   {
     kind: 8,
-    tags: [
-      ['a', membershipAddress],
-      ['p', memberHolder.pub],
-      ['expiration', String(memberExpiration)],
-    ],
+    tags: entitlementAwardTags({
+      definitionAddress: membershipAddress,
+      holderPubkey: memberHolder.pub,
+      topics: ['membership'],
+      expiration: memberExpiration,
+    }),
   },
   issuerSecret,
 );
@@ -209,7 +200,7 @@ const orderHolders = [holderA, holderB, holderC];
 const awards = [];
 for (const [index, holder] of orderHolders.entries()) {
   const award = signEvent(
-    { kind: 8, tags: [['a', productAddress], ['p', holder.pub]] },
+    { kind: 8, tags: entitlementAwardTags({ definitionAddress: productAddress, holderPubkey: holder.pub }) },
     issuerSecret,
   );
   await publish(award, `issuer-signed product award ${index + 1}/3`);
@@ -218,19 +209,19 @@ for (const [index, holder] of orderHolders.entries()) {
 const [firstPending, secondPending, acceptedOrder] = awards;
 
 // f. One accepted status on the third order, signed by the staff/admin
-// authority (§6: pending → accepted, context=order). One deliberate action =
+// authority (§5: pending → accepted at an order context). One deliberate action =
 // exactly one status event.
 const acceptedStatus = signEvent(
   {
     kind: 37237,
     created_at: Math.max(nowSeconds(), acceptedOrder.award.created_at + 1),
     tags: [
-      ['d', acceptedOrder.award.id],
-      ['e', acceptedOrder.award.id],
-      ['a', productAddress],
-      ['p', acceptedOrder.holder.pub],
       ['status', 'accepted'],
-      ['context', 'order'],
+      ['a', productAddress],
+      ['e', acceptedOrder.award.id],
+      ['p', acceptedOrder.holder.pub],
+      ['order', acceptedOrder.award.id],
+      ['d', `order:${acceptedOrder.award.id}`],
     ],
   },
   keys.admin.priv,
@@ -254,8 +245,8 @@ const calendarEvent = signEvent(
 );
 await publish(calendarEvent, 'upcoming calendar event (31923)');
 
-const stored = await pool.querySync([relay.relay_url], { kinds: [5, 8, 30009, 30078, 31923, 37237], limit: 100 });
-assert(stored.length >= 10, `independent relay query sees the home fixture family (${stored.length} events)`);
+const stored = await pool.querySync([relay.relay_url], { kinds: [5, 8, 30009, 30402, 31727, 30078, 31923, 37237], limit: 100 });
+assert(stored.length >= 12, `independent relay query sees the NIP-97 home fixture family (${stored.length} events)`);
 pool.close([relay.relay_url]);
 
 writeState({
@@ -269,6 +260,9 @@ writeState({
   emulator_base_url: emulatorUrl(relay.base_url),
   admin_pubkey: keys.admin.pub,
   issuer_pubkey: issuerPubkey,
+  community_root_pubkey: community.rootPubkey,
+  community_anchor_id: community.anchor.id,
+  required_badge_address: community.requiredBadgeAddress,
   user_pubkey: holderA.pub,
   venue_profile_id: venueProfile.id,
   product_definition_id: product.id,

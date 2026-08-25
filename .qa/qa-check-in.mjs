@@ -2,13 +2,13 @@
 import { runRelayScreenScenario } from './relay-screen-scenario.mjs';
 
 try {
-  runRelayScreenScenario({
+  await runRelayScreenScenario({
     bootstrap: '.qa/relay-bootstrap-check-in.mjs',
-    flow: 'maestro/flows/31-check-in.yaml',
+    flow: 'e2e/flows/31-check-in.{profile}.ad',
     scenario: 'check-in',
     verifiers: ['.qa/verify-check-in.mjs'],
     // The flow types the three seeded presentation payloads into the manual
-    // entry field; they are fixture data (synthetic, 1h expiry), never logged.
+    // entry field; they are synthetic short-lived fixture data, never logged.
     envFromState: {
       PRESENTATION_VALID: 'presentation',
       PRESENTATION_FULFILLED: 'presentation_fulfilled',

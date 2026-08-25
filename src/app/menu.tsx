@@ -60,19 +60,32 @@ function chipTestId(name: string): string {
 function MenuItemRow({
   item,
   editable,
+  compact,
+  selected,
   mutation,
   onToggleAvailability,
   onEdit,
 }: {
   item: MenuItem;
   editable: boolean;
+  compact: boolean;
+  selected: boolean;
   mutation?: MutationState;
   onToggleAvailability: (item: MenuItem) => void;
   onEdit: (item: MenuItem) => void;
 }) {
   const publishing = mutation?.phase === "publishing";
   return (
-    <Panel testID={`menu-item-${item.d}`} style={styles.card}>
+    <Panel
+      testID={`menu-item-${item.d}`}
+      style={
+        selected
+          ? [styles.card, ...(compact ? [styles.cardCompact] : []), styles.cardSelected]
+          : compact
+            ? [styles.card, styles.cardCompact]
+            : styles.card
+      }
+    >
       <View style={styles.cardHeader}>
         <Text style={styles.itemName} numberOfLines={2}>
           {item.name}
@@ -80,7 +93,7 @@ function MenuItemRow({
         <Badge label={AVAILABILITY_LABEL[item.availability]} tone={AVAILABILITY_TONE[item.availability]} />
       </View>
       {item.description ? (
-        <Text style={styles.itemDescription} numberOfLines={2}>
+        <Text style={styles.itemDescription} numberOfLines={compact ? 1 : 2}>
           {item.description}
         </Text>
       ) : null}
@@ -157,7 +170,14 @@ function MenuEditor({
 
   return (
     <View testID="menu-editor" style={styles.editor}>
-      <ScrollView style={styles.editorScroll} contentContainerStyle={styles.editorContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        testID="menu-editor-scroll"
+        style={styles.editorScroll}
+        contentContainerStyle={styles.editorContent}
+        keyboardShouldPersistTaps="handled"
+        persistentScrollbar
+        showsVerticalScrollIndicator
+      >
         <Text style={styles.editorTitle}>Edit {item.name}</Text>
         <Field
           label="Name"
@@ -231,19 +251,16 @@ function MenuEditor({
           )}
         </View>
         {mutation?.phase === "error" ? <Text style={styles.errorText}>{mutation.message}</Text> : null}
-        {/* Actions live inside the scroll content: as a pinned sibling after
-            the ScrollView they intermittently failed to mount on cold
-            sessions (empty footer), which the device QA gate caught. */}
-        <View style={styles.editorActions}>
-          <Button testID="menu-cancel-button" tone="secondary" label="Cancel" onPress={onCancel} disabled={publishing} />
-          <Button
-            testID="menu-save-button"
-            label={publishing ? "Saving…" : mutation?.phase === "error" ? "Retry save" : "Save item"}
-            onPress={save}
-            disabled={publishing}
-          />
-        </View>
       </ScrollView>
+      <View testID="menu-editor-footer" style={styles.editorActions}>
+        <Button testID="menu-cancel-button" tone="secondary" label="Cancel" onPress={onCancel} disabled={publishing} />
+        <Button
+          testID="menu-save-button"
+          label={publishing ? "Saving…" : mutation?.phase === "error" ? "Retry save" : "Save item"}
+          onPress={save}
+          disabled={publishing}
+        />
+      </View>
     </View>
   );
 }
@@ -311,7 +328,14 @@ function MenuSubscription({ onRetry }: { onRetry: () => void }) {
 
   const visible = filterMenu(sections, { search, section: sectionFilter });
   const editingItem = editingAddress ? itemsByAddress.get(editingAddress) : undefined;
-  const editingDisplayed = editingItem ? displayItem(editingItem, mutations[editingItem.address]) : undefined;
+  const firstEditableVisible =
+    breakpoint === "tablet"
+      ? visible.flatMap((section) => section.items).find((item) => item.author === activePubkey)
+      : undefined;
+  const effectiveEditingItem = editingItem ?? firstEditableVisible;
+  const editingDisplayed = effectiveEditingItem
+    ? displayItem(effectiveEditingItem, mutations[effectiveEditingItem.address])
+    : undefined;
 
   if (status === "error") {
     return (
@@ -372,6 +396,8 @@ function MenuSubscription({ onRetry }: { onRetry: () => void }) {
             <MenuItemRow
               item={displayed}
               editable={item.author === activePubkey}
+              compact={breakpoint === "tablet"}
+              selected={item.address === editingDisplayed?.address}
               mutation={mutations[item.address]}
               onToggleAvailability={toggleAvailability}
               onEdit={(target) => setEditingAddress(target.address)}
@@ -413,9 +439,10 @@ function MenuSubscription({ onRetry }: { onRetry: () => void }) {
 
   // MENU-09: tablet keeps the list beside the editor (master-detail); the
   // phone editor takes the whole content area with sticky primary actions.
-  if (breakpoint === "phone") {
+  if (breakpoint !== "tablet") {
     return editingDisplayed ? (
       <MenuEditor
+        key={editingDisplayed.address}
         item={editingDisplayed}
         mutation={mutations[editingDisplayed.address]}
         onSave={(draft) => editingDisplayed && publishDraft(editingDisplayed, draft)}
@@ -435,6 +462,7 @@ function MenuSubscription({ onRetry }: { onRetry: () => void }) {
       {editingDisplayed ? (
         <View style={styles.detailColumn}>
           <MenuEditor
+            key={editingDisplayed.address}
             item={editingDisplayed}
             mutation={mutations[editingDisplayed.address]}
             onSave={(draft) => editingDisplayed && publishDraft(editingDisplayed, draft)}
@@ -444,7 +472,15 @@ function MenuSubscription({ onRetry }: { onRetry: () => void }) {
             onCancel={() => setEditingAddress(null)}
           />
         </View>
-      ) : null}
+      ) : (
+        <View style={styles.detailColumn}>
+          <Panel style={styles.editorEmpty}>
+            <Text style={styles.editorEmptyEyebrow}>MENU OPERATIONS</Text>
+            <Text style={styles.editorEmptyTitle}>No editable item selected</Text>
+            <Text style={styles.itemDescription}>Choose an item published by this venue to edit it here.</Text>
+          </Panel>
+        </View>
+      )}
     </View>
   );
 }
@@ -453,16 +489,17 @@ export default function MenuRoute() {
   const router = useRouter();
   const { venue, restoring } = useVenue();
   const [retryKey, setRetryKey] = useState(0);
+  const breakpoint = useBreakpoint();
 
   return (
     <AppShell active="menu" permissions={ADMIN_PERMISSIONS}>
       <View testID="menu-screen" style={styles.screen}>
-        <View style={styles.container}>
+        <View style={[styles.container, breakpoint === "phone" && styles.containerPhone]}>
           <ScreenTitle
             title="Menu"
             description={
               venue
-                ? `Live from ${venue.relayUrl.replace(/^wss?:\/\//, "")} — availability updates publish immediately.`
+                ? "Availability updates publish to the connected venue immediately."
                 : "No venue selected"
             }
           />
@@ -488,14 +525,17 @@ export default function MenuRoute() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
-  container: { flex: 1, padding: 24, width: "100%", alignSelf: "center" },
+  container: { flex: 1, padding: 24, maxWidth: 1320, width: "100%", alignSelf: "center" },
+  containerPhone: { paddingHorizontal: 16, paddingTop: 18 },
   masterDetail: { flex: 1, flexDirection: "row", gap: 20 },
   listColumn: { flex: 1, gap: 14 },
-  detailColumn: { width: 380 },
+  detailColumn: { width: 420, minHeight: 0 },
   list: { flex: 1 },
   listContent: { gap: 12, paddingBottom: 32, flexGrow: 1 },
   sectionHeader: { color: colors.inkMuted, fontSize: 13, lineHeight: 18, fontWeight: "800", textTransform: "uppercase", letterSpacing: 1.2, marginTop: 10 },
   card: { gap: 8 },
+  cardCompact: { gap: 6, padding: 14 },
+  cardSelected: { borderColor: colors.pink, borderWidth: 2, padding: 13, backgroundColor: colors.pinkSoft },
   cardHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 14 },
   itemName: { flex: 1, color: colors.ink, fontSize: 17, lineHeight: 22, fontWeight: "800" },
   itemDescription: { color: colors.inkMuted, fontSize: 13, lineHeight: 18 },
@@ -518,14 +558,15 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.pinkSoft, borderColor: colors.pink },
   chipLabel: { color: colors.ink, fontSize: 13, lineHeight: 17, fontWeight: "700" },
   chipLabelActive: { color: colors.pinkDark },
-  editor: { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, overflow: "hidden" },
-  editorScroll: { flex: 1 },
+  editor: { flex: 1, minHeight: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, overflow: "hidden" },
+  editorScroll: { flex: 1, minHeight: 0 },
   editorContent: { padding: 20, gap: 16 },
   editorTitle: { color: colors.ink, fontSize: 20, lineHeight: 26, fontWeight: "800" },
   editorRow: { flexDirection: "row", gap: 14 },
   editorCell: { flex: 1 },
   archiveRow: { flexDirection: "row", gap: 12 },
   editorActions: {
+    flexShrink: 0,
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: 12,
@@ -534,6 +575,9 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     backgroundColor: colors.surface,
   },
+  editorEmpty: { flex: 1, justifyContent: "center", gap: 8 },
+  editorEmptyEyebrow: { color: colors.pinkDark, fontSize: 12, lineHeight: 16, fontWeight: "800", letterSpacing: 1.2 },
+  editorEmptyTitle: { color: colors.ink, fontSize: 22, lineHeight: 28, fontWeight: "800" },
   center: { flex: 1, justifyContent: "center" },
   loadingText: { color: colors.inkMuted, fontSize: 15, lineHeight: 22, textAlign: "center" },
 });

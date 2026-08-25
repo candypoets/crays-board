@@ -124,7 +124,7 @@ export default function VenueSelectionRoute() {
               accessibilityRole="button"
               accessibilityLabel="Create another venue"
               onPress={() => router.push("/create-venue")}
-              style={({ pressed }) => [styles.dashedRow, pressed && styles.pressed]}
+              style={styles.dashedRow}
             >
               <Text style={styles.dashedRowText}>+ Create another venue</Text>
             </Pressable>

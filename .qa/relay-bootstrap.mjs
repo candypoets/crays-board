@@ -3,12 +3,16 @@ import {
   assert,
   createRelay,
   emulatorUrl,
+  entitlementAwardTags,
   getRelaySecrets,
+  KIND_LISTING,
   loadKeys,
   makePool,
   nip98Header,
+  productListingTags,
   publishUntilStored,
   requireCoordinator,
+  resolveCommunityBootstrap,
   signEvent,
   sleep,
   waitRelayRunning,
@@ -50,6 +54,17 @@ writeState({
 });
 
 const pool = makePool();
+
+const secrets = await getRelaySecrets(created.id, keys);
+const issuerSecret = secrets.badge_issuer_secret_key;
+if (!/^[0-9a-f]{64}$/i.test(issuerSecret || '')) throw new Error('relay did not expose a badge issuer secret');
+const issuerPubkey = signEvent({ kind: 1 }, issuerSecret).pubkey;
+const community = await resolveCommunityBootstrap({
+  pool,
+  relayUrl: relay.relay_url,
+  expectedAdmins: [keys.admin.pub],
+  expectedIssuerPubkey: issuerPubkey,
+});
 
 // Invite service smoke: prove the scoped service mints a signed token before
 // the scenario runs. The token is stored for later invite scenarios, mirroring
@@ -93,42 +108,27 @@ const venueProfile = signEvent(
 );
 await publish(venueProfile, 'venue hospitality profile (30078/nuts-community-profile)');
 
-// b. Sellable single-use product definition per venue-commerce-nip §3.1/§3.2,
-// signed by the venue admin authority.
+// b. NIP-97/NIP-99 sellable product listing, signed by an anchor admin.
 const product = signEvent(
   {
-    kind: 30009,
-    tags: [
-      ['d', itemD],
-      ['type', 'food'],
-      ['t', 'food'],
-      ['t', 'sellable'],
-      ['name', `QA Miso aubergine ${run}`],
-      ['price', '9.50'],
-      ['currency', 'EUR'],
-      ['max_uses', '1'],
-      ['availability', 'available'],
-    ],
+    kind: KIND_LISTING,
+    tags: productListingTags({ d: itemD, title: `QA Miso aubergine ${run}`, price: '9.50' }),
   },
   keys.admin.priv,
 );
-await publish(product, 'sellable product definition (30009)');
-const productAddress = `30009:${keys.admin.pub}:${itemD}`;
+await publish(product, 'sellable product listing (30402)');
+const productAddress = `${KIND_LISTING}:${keys.admin.pub}:${itemD}`;
 
 // c. Implicit-pending order: a single-use award of the product to the fixture
 // user, signed by the venue badge issuer secret (venue-commerce-nip §4/§5).
-const secrets = await getRelaySecrets(created.id, keys);
-const issuerSecret = secrets.badge_issuer_secret_key;
-if (!/^[0-9a-f]{64}$/i.test(issuerSecret || '')) throw new Error('relay did not expose a badge issuer secret');
-const issuerPubkey = signEvent({ kind: 1 }, issuerSecret).pubkey;
 const award = signEvent(
-  { kind: 8, tags: [['a', productAddress], ['p', holder.pub]] },
+  { kind: 8, tags: entitlementAwardTags({ definitionAddress: productAddress, holderPubkey: holder.pub }) },
   issuerSecret,
 );
 await publish(award, 'issuer-signed product award (implicit pending order)');
 
-const stored = await pool.querySync([relay.relay_url], { kinds: [8, 30009, 30078], limit: 50 });
-assert(stored.length >= 3, `independent relay query sees the venue fixture family (${stored.length} events)`);
+const stored = await pool.querySync([relay.relay_url], { kinds: [8, 30009, 30402, 31727, 30078], limit: 50 });
+assert(stored.length >= 5, `independent relay query sees the NIP-97 venue fixture family (${stored.length} events)`);
 pool.close([relay.relay_url]);
 
 writeState({
@@ -142,6 +142,9 @@ writeState({
   emulator_base_url: emulatorUrl(relay.base_url),
   admin_pubkey: keys.admin.pub,
   issuer_pubkey: issuerPubkey,
+  community_root_pubkey: community.rootPubkey,
+  community_anchor_id: community.anchor.id,
+  required_badge_address: community.requiredBadgeAddress,
   user_pubkey: holder.pub,
   venue_profile_id: venueProfile.id,
   product_definition_id: product.id,

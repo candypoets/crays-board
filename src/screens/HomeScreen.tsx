@@ -56,7 +56,7 @@ export function HomeScreen({ width, orders, onNavigate }: { width: number; order
             </Pressable>
           </View>
           {orders.slice(0, phone ? 4 : 5).map((order) => (
-            <Pressable key={order.id} accessibilityRole="button" onPress={() => onNavigate("orders")} style={({ pressed }) => [styles.orderRow, pressed && styles.pressed]}>
+            <Pressable key={order.id} accessibilityRole="button" onPress={() => onNavigate("orders")} style={styles.orderRow}>
               <View style={styles.orderId}><Text style={styles.orderIdText}>#{order.id}</Text></View>
               <View style={styles.orderCopy}>
                 <Text style={styles.orderGuest}>{order.guest}</Text>

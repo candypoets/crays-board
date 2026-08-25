@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Invites scenario verifier. Independent truth per venue-commerce-nip §11 and
+// Invites scenario verifier. Independent truth per NIP-97 and
 // PRD §8.8 — never from rendered UI alone:
 //   1. The venue invite service enforces the NIP-98 binding exactly: probes
 //      with a wrong u tag, wrong method tag, wrong payload hash, or an
@@ -39,7 +39,7 @@ const infoResponse = await fetch(`${state.base_url}/community/info`);
 assert(infoResponse.ok, 'invite service answers /community/info');
 const info = await infoResponse.json();
 assert(info.relay_url === state.relay_url, 'service advertises the exact venue relay');
-assert(/^30009:[0-9a-f]{64}:.+$/i.test(info.required_badge || ''), 'service advertises the required badge');
+assert(info.required_badge === state.required_badge_address, 'service advertises the root-authored required membership');
 
 // 2. NIP-98 binding enforcement (INVITE-02): exact URL, method, payload, signer.
 const probeBody = JSON.stringify({ expires_in_seconds: 3600, badge_expires_in_seconds: 604800, max_redemptions: 3 });

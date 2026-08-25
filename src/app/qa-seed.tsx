@@ -14,14 +14,16 @@ const SERVICE_PATTERN = /^https?:\/\//;
 /**
  * Dev-only QA seed route (`craysboard://qa-seed?relay=…&service=…&nsec=…`).
  * Installs the staff signer from the deep link, selects the venue at that
- * relay, and lands on the Board orders screen. Never present in release
- * builds — production identity enters through the sign-in surfaces only.
+ * relay, then remains subscription-free until the saved Agent Device flow
+ * opens qa-handoff. Never present in release builds — production identity
+ * enters through the sign-in surfaces only.
  */
 function QaSeed() {
   const router = useRouter();
   const { setVenue } = useVenue();
   const params = useLocalSearchParams<{ relay?: string; service?: string; nsec?: string }>();
   const [error, setError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const started = useRef(false);
 
   useEffect(() => {
@@ -43,7 +45,7 @@ function QaSeed() {
       await installStaffIdentity(nsec);
       setVenue({ relayUrl: relay, serviceUrl: service, pubkey });
       console.log(`[crays-board-venue]${JSON.stringify({ relay, admin: pubkey })}`);
-      router.replace("/orders");
+      setReady(true);
     })().catch((cause: unknown) => {
       setError(cause instanceof Error ? cause.message : String(cause));
     });
@@ -53,9 +55,9 @@ function QaSeed() {
   return (
     <SafeAreaView testID="qa-seed-screen" style={styles.screen} edges={["top", "right", "bottom", "left"]}>
       <View style={styles.content}>
-        <Text style={styles.title}>{error ? "Seed failed" : "Preparing the venue…"}</Text>
+        <Text style={styles.title}>{error ? "Seed failed" : ready ? "Venue ready" : "Preparing the venue…"}</Text>
         <Text style={styles.body}>
-          {error ?? "Installing the staff key and selecting the venue relay."}
+          {error ?? (ready ? "The test journey can now open its target screen." : "Installing the staff key and selecting the venue relay.")}
         </Text>
         {error ? <Button label="Back" tone="secondary" onPress={() => router.back()} /> : null}
       </View>

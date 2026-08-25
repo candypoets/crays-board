@@ -1,0 +1,14 @@
+# ENTRY-04 — select and revalidate an existing venue.
+context platform=android timeout=360000
+env APP_ID=life.crays.board
+
+open "craysboard://qa-handoff?target=venue-selection" --metro-port 8090
+wait "id=\"venue-selection-screen\"" 60000
+is visible "id=\"venue-card\""
+is visible "id=\"access-check\""
+is visible "id=\"create-another-venue\""
+wait text "Connected" 15000
+click "id=\"access-refresh\""
+wait text "Connected" 15000
+screenshot "${AD_ARTIFACTS}/05-venue-selection.png"
+close

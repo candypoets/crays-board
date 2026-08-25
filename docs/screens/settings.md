@@ -12,7 +12,17 @@ Staff identity (QA admin key) with venue authority and the `settings` permission
 
 ## Starting truth
 
-- Isolated relay `craysboardqa-venue-<run>` with: venue profile `30078` (`d=nuts-community-profile`, `type=hospitality`, admin-signed), a monthly sellable membership definition `30009` (`d=qa-membership-<run>`, `type=membership`, `t=membership`, `t=sellable`, `period=monthly`, `availability=available`, admin-signed), and a signed room manifest `30078` (`d=life.crays/room/v1/qa-room-<run>`, `schema=life.crays/room/v1`, `operator=<admin>`, capabilities, `open=open`, future expiration, `award_issuer=<badge issuer>`). The shared orders fixture family (product + issuer-signed award) is present but untouched by this flow.
+- Isolated relay `craysboardqa-venue-<run>` with its NIP-11 root,
+  root-signed `31727` community anchor, and root-authored invite-membership;
+  venue profile `30078` (`d=nuts-community-profile`, `type=hospitality`,
+  admin-signed); a monthly sellable membership definition `30009`
+  (`d=qa-membership-<run>`, `t=membership`, recurring
+  `price=["12.00","EUR","month"]`, `availability=available`, admin-signed,
+  no legacy `type`/`sellable`/`period` tags); and a signed room manifest
+  `30078` (`d=life.crays/room/v1/qa-room-<run>`, versioned schema, operator,
+  capabilities, open state, expiry, and advertised award issuer). The shared
+  orders fixture family (kind `30402` product + issuer-signed award) is present
+  but untouched by this flow.
 - The venue payment service has no Stripe account configured for this venue.
 - App installed, state cleared, Metro on 8090, one Android device.
 
@@ -31,8 +41,13 @@ Open the seed deep link, wait for the Board shell, open Settings. On **Profile**
 ## Authoritative result
 
 - The venue relay retains exactly one `30078` at `d=nuts-community-profile`: the QA description in `about`, `type=hospitality`, signed by the admin, newer than the seeded profile, signature valid (strfry keeps only the latest addressable event, so exact-one is the republish proof).
-- The venue relay retains exactly one `30009` at the membership `d`: `availability=unavailable`, classification/price/period retained, signed by the admin — a new event id at the same stable `d`.
-- Read-only proof: the room manifest is byte-identical to the seeded event; the relay holds exactly two `30078` (profile + manifest) and two `30009` (product + membership) and zero `37237`.
+- The venue relay retains exactly one `30009` at the membership `d`:
+  `availability=unavailable`, `t=membership`, and the recurring NIP-99 price
+  tuple retained, signed by the admin — a new event id at the same stable `d`.
+- Read-only proof: the room manifest is byte-identical to the seeded event;
+  the relay holds exactly two `30078` (profile + manifest), one staff-authored
+  `30009` membership plus the root-authored invite-membership, one untouched
+  `30402` product listing, and zero `37237`.
 - Logcat `[crays-board-profile]` carries the same profile event id that landed on the relay; `[crays-board-membership]` carries the same membership event id with `availability=unavailable`.
 
 ## Forbidden result

@@ -3,17 +3,18 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { loadKeys } from './relay-lib.mjs';
+import { runAgentDeviceFlow } from './agent-device-runner.mjs';
 
 /**
  * Create Venue scenario runner — BESPOKE (not runRelayScreenScenario):
  * there is no pre-existing relay. The app itself provisions exactly one
- * venue relay during the Maestro flow, and teardown deletes exactly that
+ * venue relay during the Agent Device flow, and teardown deletes exactly that
  * relay (recorded by the verifier) plus its volume.
  *
  * Lifecycle:
  *  1. Bootstrap (.qa/relay-bootstrap-create-venue.mjs) — UI-only: coordinator
  *     health, slug-collision check, logcat + pm clear, public-safe state.
- *  2. Exercise — maestro/flows/70-create-venue.yaml drives welcome → Create
+ *  2. Exercise — e2e/flows/70-create-venue.ad drives welcome → Create
  *     venue → wizard (unique name via QA_VENUE_NAME, staff nsec via QA_NSEC)
  *     → submit → provisioning → success → Open venue.
  *  3. Verify — .qa/verify-create-venue.mjs proves coordinator + relay truth.
@@ -55,21 +56,19 @@ try {
   run(process.execPath, ['.qa/relay-bootstrap-create-venue.mjs']);
   if (!existsSync(statePath)) throw new Error(`bootstrap did not write ${statePath}`);
   const state = JSON.parse(readFileSync(statePath, 'utf8'));
-
   try {
     // The staff signer is the keys.json admin (imported inside the wizard).
-    // Its nsec reaches Maestro only — never state or logs; the exec error is
+    // Its nsec reaches Agent Device only — never state or logs; the exec error is
     // sanitized because Node includes full argv (with the nsec) in failures.
     const staffNsec = loadKeys().admin.nsec;
     try {
-      run(process.env.MAESTRO_CLI || 'maestro', [
-        'test',
-        '-e', `QA_VENUE_NAME=${state.venue_name}`,
-        '-e', `QA_NSEC=${staffNsec}`,
-        'maestro/flows/70-create-venue.yaml',
-      ]);
+      runAgentDeviceFlow({
+        flow: 'e2e/flows/70-create-venue.ad',
+        scenario: 'create-venue',
+        values: { QA_VENUE_NAME: state.venue_name, QA_NSEC: staffNsec },
+      });
     } catch {
-      throw new Error('maestro flow failed: maestro/flows/70-create-venue.yaml');
+      throw new Error('Agent Device flow failed: e2e/flows/70-create-venue.ad');
     }
     run(process.execPath, ['.qa/verify-create-venue.mjs']);
     console.log('QA PASS: create-venue');

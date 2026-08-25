@@ -10,7 +10,7 @@ import {
 
 /**
  * Create Venue bootstrap — UI-only entry (bespoke scenario: there is NO
- * pre-existing relay; the app itself provisions it during the Maestro flow).
+ * pre-existing relay; the app itself provisions it during the Agent Device flow).
  * Checks the coordinator, clears the device state, proves the run slug is
  * unused, and writes the public-safe scenario state.
  *

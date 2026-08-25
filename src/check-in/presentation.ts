@@ -1,22 +1,33 @@
 import type { Event } from "nostr-tools";
 
-import type { OrderContext, PublishedOrderStatus } from "@/nostr/protocol";
+import { eventContextKey, isDefinitionAddress } from "@/access/nip97";
+import {
+  awardIssuerValid,
+  revocationSignerValid,
+  statusSignerValid,
+  type CommunityTrust,
+} from "@/access/trust";
+import type { PublishedOrderStatus } from "@/nostr/protocol";
 
 /**
- * Check-in presentation validation (venue-commerce-nip §8, EVENT-10/11/12).
+ * Check-in presentation validation (NIP-97, spec of record ~/nips/97.md).
  *
  * A guest presents a short-lived kind 27236 credential, signed by the holder
- * key, pasted or typed into manual entry as the full signed event JSON:
+ * key, either as the full signed event JSON (manual entry) or prefixed and
+ * base64url-encoded: `nuts:present:<base64url(JSON)>` (no padding — strip the
+ * prefix and decode). Grammar (mirrors crays-rn src/access/presentation.ts):
  *
  * ```
  * kind: 27236
  * pubkey: <holder pubkey>            // the presenting guest signs
  * tags:
- *   ["p", "<holder pubkey>"]         // holder binding (must equal pubkey)
+ *   ["type", "nuts_entitlement_presentation"]
+ *   ["expiration", "<unix>"]         // short-lived expiry (required)
+ *   ["nonce", "<random>"]            // replay guard (required)
  *   ["e", "<award event id>"]        // the referenced kind 8 award
- *   ["a", "30009:<author>:<d>"]      // the award's event-access definition
- *   ["event", "<31923 event id>"]    // the calendar event this entry is for
- *   ["expiration", "<unix>"]         // NIP-40 short-lived expiry (required)
+ *   ["a", "<definition address>"]    // 30402 ticket def or the event itself
+ *   ["r", "<community relay URL>"]   // required venue relay pinning
+ *   ["event", "31923:<author>:<d>"]  // admission context, xor `order`
  * ```
  *
  * Everything here is synchronous and pure so the whole rejection matrix is
@@ -29,10 +40,15 @@ export const KIND_PRESENTATION = 27236;
 export const KIND_CALENDAR_EVENT = 31923;
 export const KIND_DELETION = 5;
 
+export const PRESENTATION_PREFIX = "nuts:present:";
+export const ENTITLEMENT_PRESENTATION_TYPE = "nuts_entitlement_presentation";
+
 const HEX_64 = /^[0-9a-f]{64}$/;
 const HEX_128 = /^[0-9a-f]{128}$/;
 /** Tolerance for holder/device clock skew on the not-yet-valid window. */
 const CLOCK_SKEW_SECONDS = 300;
+/** Staleness window: a presentation older than this is expired (nuts-cash rule). */
+const STALE_AFTER_SECONDS = 90;
 
 export type RejectionReason =
   | "malformed"
@@ -67,27 +83,42 @@ export type ParsedPresentation = {
   holderPubkey: string;
   awardId: string;
   definitionAddress: string;
-  eventId: string;
+  /** Calendar event coordinate from the `event` context tag. */
+  eventAddress: string;
   createdAt: number;
   expiresAt: number;
 };
 
-/** Award facts needed for binding and remaining-use checks. */
+/**
+ * Award facts needed for binding, issuance, and remaining-use checks: the
+ * expected attendees for the active event, resolved by fold.ts.
+ */
 export type CheckInAward = {
   id: string;
   issuerPubkey: string;
   definitionAddress: string;
   holderPubkey: string;
-  /** From the referenced definition; event-access is single-use (default 1). */
+  createdAt: number;
+  /** From the referenced definition; 30402 tickets default to 1. */
   maxUses: number;
+  /** From the referenced definition; direct free-admission awards are not sellable. */
+  sellable: boolean;
 };
 
-/** Status facts needed for remaining-use checks. */
+/**
+ * Status facts needed for remaining-use checks. Only statuses with a valid
+ * NIP-97 context (parseStatusContext at the worker boundary) reach here.
+ */
 export type CheckInStatus = {
-  authorPubkey: string;
+  id: string;
+  awardId: string;
+  definitionAddress: string;
+  holderPubkey: string;
+  signerPubkey: string;
+  /** Fulfillment context key: `order:<ref>` or `event:<coordinate>`. */
   contextKey: string;
   status: PublishedOrderStatus;
-  context: OrderContext;
+  createdAt: number;
 };
 
 /** Kind 5 revocation facts. */
@@ -98,19 +129,19 @@ export type CheckInRevocation = {
 };
 
 export type CheckInContext = {
-  /** The active calendar event id (31923) being checked in for. */
-  eventId: string;
-  /** The event's entrance-badge definition address. */
-  accessAddress: string;
+  /** The active calendar event coordinate (31923:<author>:<d>). */
+  eventAddress: string;
+  /** The venue relay URL presentations are pinned to via their `r` tag. */
+  venueRelayUrl: string;
   awards: CheckInAward[];
   statuses: CheckInStatus[];
   revocations: CheckInRevocation[];
-  trustedIssuers: ReadonlySet<string>;
+  trust: CommunityTrust;
   now: number;
   /**
-   * Awards this device just fulfilled whose relay echo has not arrived yet
-   * (§8.4: rescans resolve to exactly one fulfillment, even before the
-   * subscription catches up).
+   * Awards this device just fulfilled whose relay echo has not arrived yet:
+   * rescans resolve to exactly one fulfillment, even before the subscription
+   * catches up.
    */
   locallyFulfilledAwardIds?: ReadonlySet<string>;
 };
@@ -144,21 +175,137 @@ function reject(reason: RejectionReason): ValidationResult {
   return { ok: false, reason };
 }
 
+const BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/** base64url (padding optional) → UTF-8 text; undefined on any invalid input. */
+function decodeBase64Url(encoded: string): string | undefined {
+  const clean = encoded.replace(/-/g, "+").replace(/_/g, "/");
+  if (clean.length % 4 === 1 || /[^A-Za-z0-9+/]/.test(clean)) return undefined;
+  const bytes: number[] = [];
+  for (let index = 0; index < clean.length; index += 4) {
+    const chunk = clean.slice(index, index + 4);
+    const values = chunk.split("").map((char) => BASE64_ALPHABET.indexOf(char));
+    const a = values[0];
+    const b = values[1] ?? 0;
+    const c = values[2] ?? 0;
+    const d = values[3] ?? 0;
+    bytes.push((a << 2) | (b >> 4));
+    if (chunk.length > 2) bytes.push(((b & 15) << 4) | (c >> 2));
+    if (chunk.length > 3) bytes.push(((c & 3) << 6) | d);
+  }
+  try {
+    return new TextDecoder().decode(Uint8Array.from(bytes));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Strips the optional `nuts:present:` wire prefix and returns the JSON text. */
+function unwrapPresentation(raw: string): string | undefined {
+  const text = raw.trim();
+  if (!text.startsWith(PRESENTATION_PREFIX)) return text;
+  return decodeBase64Url(text.slice(PRESENTATION_PREFIX.length));
+}
+
+/** NIP-97: the presented `a` tag may reference any definition family. */
+function isValidDefinitionAddress(value: string): boolean {
+  const [, author, ...d] = value.split(":");
+  return isDefinitionAddress(value) && HEX_64.test((author ?? "").toLowerCase()) && d.join(":").length > 0;
+}
+
+function isValidEventCoordinate(value: string): boolean {
+  const [kind, author, ...d] = value.split(":");
+  return (
+    (kind === "31922" || kind === "31923") &&
+    HEX_64.test((author ?? "").toLowerCase()) &&
+    d.join(":").length > 0
+  );
+}
+
+function isValidRelayUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (url.protocol === "ws:" || url.protocol === "wss:") && Boolean(url.host);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Latest status per fulfillment context of one award, restricted to trusted
+ * signers (statusSignerValid). Resolution per NIP-97: latest created_at,
+ * lowest event id breaks ties.
+ */
+function latestPerContext(
+  award: CheckInAward,
+  statuses: CheckInStatus[],
+  trust: CommunityTrust,
+): Map<string, CheckInStatus> {
+  const latest = new Map<string, CheckInStatus>();
+  for (const status of statuses) {
+    if (
+      status.awardId !== award.id ||
+      status.definitionAddress !== award.definitionAddress ||
+      status.holderPubkey !== award.holderPubkey ||
+      status.createdAt < award.createdAt ||
+      !status.contextKey
+    ) {
+      continue;
+    }
+    if (!statusSignerValid(status.signerPubkey, trust)) continue;
+    const current = latest.get(status.contextKey);
+    if (
+      !current ||
+      status.createdAt > current.createdAt ||
+      (status.createdAt === current.createdAt && status.id < current.id)
+    ) {
+      latest.set(status.contextKey, status);
+    }
+  }
+  return latest;
+}
+
+/** NIP-97 derived state: one context whose latest status is fulfilled = one use. */
+export function fulfilledContextCount(
+  award: CheckInAward,
+  statuses: CheckInStatus[],
+  trust: CommunityTrust,
+): number {
+  let count = 0;
+  for (const status of latestPerContext(award, statuses, trust).values()) {
+    if (status.status === "fulfilled") count += 1;
+  }
+  return count;
+}
+
+/** The current status of one (award, context) pair, trusted signers only. */
+export function latestStatusAtContext(
+  award: CheckInAward,
+  contextKey: string,
+  statuses: CheckInStatus[],
+  trust: CommunityTrust,
+): CheckInStatus | undefined {
+  return latestPerContext(award, statuses, trust).get(contextKey);
+}
+
 /**
  * Parses and cryptographically validates the presentation payload, then
  * checks every binding against relay truth in a deterministic order so each
  * rejection class gets its specific reason:
- * shape → signature → holder → time window → event → award → trust →
- * revocation → remaining uses.
+ * shape → signature → grammar (type/nonce/e/a/r/context/expiration) →
+ * time window → event → award → holder → trust → revocation → remaining uses.
  */
 export function validatePresentation(
   raw: string,
   context: CheckInContext,
   verify: SignatureVerifier = defaultVerifier(),
 ): ValidationResult {
+  const json = unwrapPresentation(raw);
+  if (json === undefined) return reject("malformed");
+
   let event: Record<string, unknown>;
   try {
-    const parsed: unknown = JSON.parse(raw);
+    const parsed: unknown = JSON.parse(json);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return reject("malformed");
     event = parsed as Record<string, unknown>;
   } catch {
@@ -193,52 +340,76 @@ export function validatePresentation(
     return reject("invalid_signature");
   }
 
-  const holder = tagValue(event.tags, "p")?.toLowerCase();
+  const type = tagValue(event.tags, "type");
+  const nonce = tagValue(event.tags, "nonce");
   const awardId = tagValue(event.tags, "e")?.toLowerCase();
   const definitionAddress = tagValue(event.tags, "a") ?? "";
-  const eventId = tagValue(event.tags, "event")?.toLowerCase();
+  const relay = tagValue(event.tags, "r");
+  const orderContext = tagValue(event.tags, "order");
+  const eventContext = tagValue(event.tags, "event");
   const expiration = Number(tagValue(event.tags, "expiration"));
-  if (!holder || !HEX_64.test(holder) || !awardId || !HEX_64.test(awardId) || !eventId || !HEX_64.test(eventId)) {
+  if (type !== ENTITLEMENT_PRESENTATION_TYPE || !nonce) return reject("malformed");
+  if (!awardId || !HEX_64.test(awardId) || !isValidDefinitionAddress(definitionAddress)) {
     return reject("malformed");
   }
-  if (holder !== pubkey) return reject("wrong_holder");
+  // The presentation is meaningful only in its pinned NIP-97 community.
+  if (!relay || !isValidRelayUrl(relay) || relay !== context.venueRelayUrl) {
+    return reject("malformed");
+  }
+  // Exactly one fulfillment context: `order` xor `event` (NIP-97 grammar).
+  if (Boolean(orderContext) === Boolean(eventContext)) return reject("malformed");
+  if (eventContext !== undefined && !isValidEventCoordinate(eventContext)) return reject("malformed");
   if (!Number.isSafeInteger(expiration) || expiration <= 0) return reject("malformed");
 
   const createdAt = event.created_at;
   if (createdAt > context.now + CLOCK_SKEW_SECONDS) return reject("not_yet_valid");
-  if (expiration <= context.now) return reject("expired");
+  if (expiration < context.now) return reject("expired");
+  if (createdAt < context.now - STALE_AFTER_SECONDS) return reject("expired");
 
   // Event binding comes before award/uses checks so a wrong-event pass for an
   // already-fulfilled award still reports "different event" (specific reason).
-  if (eventId !== context.eventId) return reject("wrong_event");
+  // An order-context presentation at the door is for a store, not this event.
+  if (!eventContext || eventContext !== context.eventAddress) return reject("wrong_event");
 
   const award = context.awards.find((candidate) => candidate.id === awardId);
   if (!award) return reject("unknown_award");
-  if (award.holderPubkey !== holder) return reject("wrong_holder");
-  if (award.definitionAddress !== context.accessAddress) return reject("wrong_event");
+  if (award.holderPubkey !== pubkey) return reject("wrong_holder");
   if (definitionAddress !== award.definitionAddress) return reject("wrong_award");
 
-  if (!context.trustedIssuers.has(award.issuerPubkey)) return reject("untrusted_issuer");
+  // NIP-97 issuance rule: anchor admins may award anything; the delegated
+  // badge issuer only sellable (priced) definitions.
+  if (!awardIssuerValid({ issuer: award.issuerPubkey, sellable: award.sellable, trust: context.trust })) {
+    return reject("untrusted_issuer");
+  }
 
   const revoked = context.revocations.some(
     (revocation) =>
-      context.trustedIssuers.has(revocation.authorPubkey) && revocation.references.includes(award.id),
+      revocationSignerValid(revocation.authorPubkey, award.issuerPubkey, context.trust) &&
+      revocation.references.includes(award.id),
   );
   if (revoked) return reject("revoked");
 
-  const fulfilled = context.statuses.filter(
-    (status) =>
-      status.contextKey === award.id &&
-      status.status === "fulfilled" &&
-      status.context === "event" &&
-      context.trustedIssuers.has(status.authorPubkey),
-  ).length;
-  const consumed = fulfilled + (context.locallyFulfilledAwardIds?.has(award.id) ? 1 : 0);
-  if (consumed >= award.maxUses) return reject("already_checked_in");
+  // Remaining uses: fulfilled contexts across ALL of the award's contexts
+  // count, clamped at zero; a locally fulfilled award whose relay echo has
+  // not arrived yet consumes its use immediately.
+  const fulfilled = fulfilledContextCount(award, context.statuses, context.trust);
+  const echoed =
+    latestStatusAtContext(award, eventContextKey(context.eventAddress), context.statuses, context.trust)
+      ?.status === "fulfilled";
+  const localPending = Boolean(context.locallyFulfilledAwardIds?.has(award.id)) && !echoed;
+  if (fulfilled + (localPending ? 1 : 0) >= award.maxUses) return reject("already_checked_in");
 
   return {
     ok: true,
-    presentation: { id, holderPubkey: holder, awardId, definitionAddress, eventId, createdAt, expiresAt: expiration },
+    presentation: {
+      id,
+      holderPubkey: pubkey,
+      awardId,
+      definitionAddress,
+      eventAddress: eventContext,
+      createdAt,
+      expiresAt: expiration,
+    },
     award,
   };
 }

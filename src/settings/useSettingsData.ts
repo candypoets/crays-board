@@ -1,11 +1,13 @@
-import { extractTagValue, extractTagValues, type WorkerMessage } from "@candypoets/nipworker";
+import { extractTag, extractTagValue, extractTagValues, type WorkerMessage } from "@candypoets/nipworker";
 import { useRelayStatus as subscribeToRelayStatus, useSubscription as subscribeToNostr } from "@candypoets/nipworker/hooks";
 import { isEoce, isParsedEvent } from "@candypoets/nipworker/utils";
 import { useEffect, useMemo, useState } from "react";
 import { AppState } from "react-native";
 
+import { isNewerAnchor, parseCommunityAnchor, parsePriceTag, type CommunityAnchor } from "@/access/nip97";
+import { fetchRelayRootPubkey, trustFromAnchor } from "@/access/trust";
 import { getNostrRuntime } from "@/nostr/manager";
-import { KIND_DEFINITION, KIND_VENUE_PROFILE } from "@/nostr/protocol";
+import { KIND_ANCHOR, KIND_BADGE_DEFINITION, KIND_VENUE_PROFILE } from "@/nostr/protocol";
 import { useVenue } from "@/venue/VenueContext";
 
 import {
@@ -36,12 +38,14 @@ export type SettingsData = {
 };
 
 type Buffer = {
+  anchor: CommunityAnchor | null;
   profiles: Map<string, VenueProfileInput>;
   memberships: Map<string, MembershipInput>;
   roomManifests: Map<string, RoomManifestInput>;
 };
 
 const emptyBuffer = (): Buffer => ({
+  anchor: null,
   profiles: new Map(),
   memberships: new Map(),
   roomManifests: new Map(),
@@ -57,10 +61,14 @@ function isNewer(previous: { id: string; createdAt: number } | undefined, id: st
 
 /**
  * Subscription coordinator for the settings sections. Owns one stable
- * subscription (`board_settings_<sanitized relay>`, kinds 30009/30078),
+ * subscription (`board_settings_<sanitized relay>`, kinds 30009/30078/31727),
  * extracts plain inputs at the worker boundary, and folds them through the
  * pure projections in fold.ts. EOSE is the loaded signal; cleanup
  * unsubscribes on unmount, venue change, and backgrounding.
+ *
+ * NIP-97 trust chain: the relay's NIP-11 pubkey is the community root key;
+ * the root-signed anchor event in the subscription declares the admins whose
+ * definitions count. Projections stay empty until the anchor resolves.
  */
 export function useSettingsData(): SettingsData {
   const { venue, restoring } = useVenue();
@@ -68,9 +76,30 @@ export function useSettingsData(): SettingsData {
 
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [rootPubkey, setRootPubkey] = useState<string | null>(null);
   const [buffer, setBuffer] = useState<Buffer>(emptyBuffer);
   const [relayReachable, setRelayReachable] = useState<RelayReachability>("unknown");
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+
+  // The venue relay's NIP-11 document publishes the community root key; the
+  // subscription below stays closed until it resolves.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRootPubkey(null);
+    setError(null);
+    if (!relayUrl) return;
+    let cancelled = false;
+    fetchRelayRootPubkey(relayUrl)
+      .then((pubkey) => {
+        if (!cancelled) setRootPubkey(pubkey);
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : "The venue relay did not answer.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [relayUrl]);
 
   // Relay reachability comes from the subscription connection status only —
   // never from manifest or hardware records (ROOM-02 separation).
@@ -96,7 +125,7 @@ export function useSettingsData(): SettingsData {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBuffer(emptyBuffer());
     setLoaded(false);
-    if (!relayUrl) return;
+    if (!relayUrl || !rootPubkey) return;
     if (!getNostrRuntime().manager) {
       setError("The secure Nostr engine is unavailable. Use a Crays development build.");
       return;
@@ -125,6 +154,17 @@ export function useSettingsData(): SettingsData {
       const event = isParsedEvent(message);
       if (!event) return;
       const kind = event.kind();
+
+      if (kind === KIND_ANCHOR) {
+        // Trust root: only the anchor signed by the relay's NIP-11 root key.
+        const anchor = parseCommunityAnchor(event);
+        if (!anchor || anchor.pubkey !== rootPubkey) return;
+        setBuffer((current) =>
+          !current.anchor || isNewerAnchor(anchor, current.anchor) ? { ...current, anchor } : current,
+        );
+        return;
+      }
+
       const id = event.id() ?? "";
       const author = (event.pubkey() ?? "").toLowerCase();
       const d = extractTagValue(event, "d") ?? "";
@@ -175,22 +215,25 @@ export function useSettingsData(): SettingsData {
         return;
       }
 
-      if (kind === KIND_DEFINITION && extractTagValue(event, "type") === "membership") {
-        // §3.4: membership *plans* are sellable definitions with price and
-        // period. Non-sellable membership definitions (e.g. the relay's
-        // internal badge definition) are not staff-editable plans.
-        if (!extractTagValues(event, "t").includes("sellable")) return;
+      if (kind === KIND_BADGE_DEFINITION && extractTagValues(event, "t").includes("membership")) {
+        // NIP-97: membership *plans* are badge definitions on the membership
+        // topic carrying a well-formed NIP-99 price tag. The fold keeps
+        // anchor-admin authors only, so the relay node's root-authored
+        // members invite-badge definition stays out of the editable list.
+        const priceTag = extractTag(event, "price");
+        const price = parsePriceTag(event);
+        if (!priceTag || !price) return;
         const membership: MembershipInput = {
-          address: `${KIND_DEFINITION}:${author}:${d}`,
+          address: `${KIND_BADGE_DEFINITION}:${author}:${d}`,
           id,
           authorPubkey: author,
           d,
-          price: extractTagValue(event, "price") ?? "",
-          currency: extractTagValue(event, "currency") ?? "",
+          price: priceTag[1],
+          currency: price.currency,
           createdAt,
           ...(extractTagValue(event, "name") ? { name: extractTagValue(event, "name") } : {}),
           ...(extractTagValue(event, "description") ? { description: extractTagValue(event, "description") } : {}),
-          ...(extractTagValue(event, "period") ? { period: extractTagValue(event, "period") } : {}),
+          ...(price.recurrence ? { recurrence: price.recurrence } : {}),
           ...(extractTagValue(event, "availability") ? { availability: extractTagValue(event, "availability") } : {}),
         };
         setBuffer((current) =>
@@ -208,7 +251,14 @@ export function useSettingsData(): SettingsData {
         const subId = `board_settings_${relayUrl.replace(/[^a-z0-9]/gi, "_")}`;
         unsubscribe = subscribeToNostr(
           subId,
-          [{ kinds: [KIND_VENUE_PROFILE, KIND_DEFINITION], relays: [relayUrl], limit: 500, noCache: true }],
+          [
+            {
+              kinds: [KIND_VENUE_PROFILE, KIND_BADGE_DEFINITION, KIND_ANCHOR],
+              relays: [relayUrl],
+              limit: 500,
+              noCache: true,
+            },
+          ],
           handleMessage,
           { closeOnEose: false },
         );
@@ -227,15 +277,25 @@ export function useSettingsData(): SettingsData {
       appStateSubscription.remove();
       stop();
     };
-  }, [relayUrl]);
+  }, [relayUrl, rootPubkey]);
 
-  const profile = useMemo(() => foldVenueProfile([...buffer.profiles.values()]), [buffer.profiles]);
-  const memberships = useMemo(() => foldMemberships([...buffer.memberships.values()]), [buffer.memberships]);
-  const room = useMemo(() => foldRoomManifest([...buffer.roomManifests.values()], now), [buffer.roomManifests, now]);
+  const trust = useMemo(() => (buffer.anchor ? trustFromAnchor(buffer.anchor) : null), [buffer.anchor]);
+  const profile = useMemo(
+    () => (trust ? foldVenueProfile([...buffer.profiles.values()], trust) : null),
+    [buffer.profiles, trust],
+  );
+  const memberships = useMemo(
+    () => (trust ? foldMemberships([...buffer.memberships.values()], trust) : []),
+    [buffer.memberships, trust],
+  );
+  const room = useMemo(
+    () => (trust ? foldRoomManifest([...buffer.roomManifests.values()], now, trust) : null),
+    [buffer.roomManifests, now, trust],
+  );
 
   if (restoring) return { status: "loading", profile: null, memberships: [], room: null, relayReachable, now };
   if (error) return { status: "error", error, profile: null, memberships: [], room: null, relayReachable, now };
   if (!venue) return { status: "ready", profile: null, memberships: [], room: null, relayReachable, now };
-  if (!loaded) return { status: "loading", profile: null, memberships: [], room: null, relayReachable, now };
+  if (!loaded || !trust) return { status: "loading", profile: null, memberships: [], room: null, relayReachable, now };
   return { status: "ready", profile, memberships, room, relayReachable, now };
 }

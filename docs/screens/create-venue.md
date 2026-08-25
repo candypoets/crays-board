@@ -1,6 +1,6 @@
 # Create Venue — four-step wizard and happy-path provisioning
 
-Executable contract: `maestro/flows/70-create-venue.yaml` via
+Executable contract: `e2e/flows/70-create-venue.ad` via
 `.qa/qa-create-venue.mjs` (bespoke runner — there is no pre-existing relay;
 the app itself provisions it). Covers CREATE-01, CREATE-02, CREATE-03 (import
 path + recovery gate), CREATE-04, CREATE-05, and CREATE-06 from
@@ -22,16 +22,17 @@ coordinator and the new relay, never from rendered text.
 Newcomer with no active identity and no selected venue. During step 3 the
 flow imports an existing authorized account (QA admin key) through the
 wizard's import path — the same boundary production sign-in uses. After
-provisioning, that key is the venue's sole `admin_pubkeys` entry (owner).
+provisioning, that key is the coordinator's sole `admin_pubkeys` provisioning
+input and the sole admin named by the resulting root-signed NIP-97 anchor.
 
 ## Starting truth
 
 - App package state cleared (`pm clear life.crays.board`), no signer, no
   selected venue, no local creation attempt.
-- Nuts coordinator healthy at `http://127.0.0.1:7798`; **zero** relays whose
+- Suite-owned Nuts coordinator healthy at `http://127.0.0.1:7823`; **zero** relays whose
   domain contains the run slug exist before the run.
 - Metro serving the dev client on 8090, one Android device. The app resolves
-  the coordinator at `http://10.0.2.2:7798` (dev Android default) or
+  the coordinator at `http://10.0.2.2:7823` (QA Android default) or
   `EXPO_PUBLIC_CRAYS_COORDINATOR_URL`.
 - Emulator URL contract: the coordinator verifies NIP-98 `u` tags against its
   own configured base URL (`NIP98_BASE_URL`), so the app signs the canonical
@@ -43,7 +44,7 @@ provisioning, that key is the venue's sole `admin_pubkeys` entry (owner).
 ## User action
 
 Cold launch → welcome → **Create venue**. Step 1: type a unique venue name
-(`QA Venue <run>` via Maestro env) and an optional introduction; the slug and
+(`QA Venue <run>` via Agent Device env) and an optional introduction; the slug and
 guest preview update live; **Continue**. Step 2: keep the device-suggested
 timezone, optionally fill address/hours; **Continue**. Step 3: choose **Sign
 in / import existing account**, paste the staff nsec, **Import account**, fill
@@ -74,9 +75,14 @@ the owner display name, tick the recovery acknowledgement (it gates
   one** relay whose domain contains the run slug; its `admin_pubkeys` is
   exactly `[staff pubkey]`, and it reports `running` with `relay_url` and
   `base_url`.
+- The new relay's NIP-11 `pubkey` identifies its community root. That root's
+  current `31727`/`d=community` anchor names exactly the staff admin and the
+  relay's delegated badge issuer, and its root-authored invite-membership
+  definition resolves at the service-advertised required badge address.
 - The NEW relay round-trips exactly one kind `30078` with
-  `d=nuts-community-profile`, `type=hospitality`, the venue name, and the
-  introduction as `about`, signed by the staff key with a valid signature.
+  `d=nuts-community-profile`, `type=hospitality`, `t=hospitality`, the venue
+  name, and the introduction as `about`, signed by the staff key with a valid
+  signature.
 - Logcat `[crays-board-create-venue]` carries the same relay id, staff pubkey,
   slug, and stable attempt id — device truth matches coordinator truth, with
   the relay/service URLs compared in device-reachable form (emulator alias).
@@ -105,4 +111,4 @@ Runner teardown (in `finally`) deletes exactly the relay recorded in the
 scenario state plus its `strfry-badge-data-<id>` volume (reusing
 `.qa/relay-teardown.mjs` with `CRAYS_BOARD_QA_STATE`), clears the
 `life.crays.board` package, and removes `/tmp/qa-crays-board-create-venue.json`.
-Maestro screenshots are retained for diagnosis.
+Agent Device screenshots are retained for diagnosis.

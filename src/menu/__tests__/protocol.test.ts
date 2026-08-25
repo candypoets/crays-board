@@ -1,4 +1,6 @@
-import { KIND_DEFINITION } from "@/nostr/protocol";
+/// <reference types="jest" />
+
+import { KIND_LISTING } from "@/nostr/protocol";
 
 import type { MenuItem } from "../fold";
 import {
@@ -19,17 +21,11 @@ const validDraft: MenuDraft = {
   availability: "available",
 };
 
-function tagsOf(template: { tags: string[][] }): Map<string, string[]> {
-  const map = new Map<string, string[]>();
-  for (const [name, value] of template.tags) {
-    const list = map.get(name) ?? [];
-    if (value !== undefined) list.push(value);
-    map.set(name, list);
-  }
-  return map;
+function tagValues(template: { tags: string[][] }, name: string): string[][] {
+  return template.tags.filter((tag) => tag[0] === name).map((tag) => tag.slice(1));
 }
 
-describe("validateMenuDraft (venue-commerce-nip §3.1)", () => {
+describe("validateMenuDraft", () => {
   it("accepts a valid draft", () => {
     expect(isMenuDraftValid(validateMenuDraft(validDraft))).toBe(true);
   });
@@ -58,22 +54,27 @@ describe("validateMenuDraft (venue-commerce-nip §3.1)", () => {
 });
 
 describe("buildMenuDefinition", () => {
-  it("builds the exact §3.1/§3.2 sellable product tag set", () => {
+  it("builds the exact NIP-97/NIP-99 kind 30402 listing tag set", () => {
     const template = buildMenuDefinition({ d: "soup", type: "food", draft: validDraft, position: 2 });
-    expect(template.kind).toBe(KIND_DEFINITION);
+    expect(template.kind).toBe(KIND_LISTING);
     expect(template.content).toBe("");
-    const tags = tagsOf(template);
-    expect(tags.get("d")).toEqual(["soup"]);
-    expect(tags.get("type")).toEqual(["food"]);
-    expect(tags.get("t")).toEqual(["food", "sellable"]);
-    expect(tags.get("name")).toEqual(["Tomato soup"]);
-    expect(tags.get("price")).toEqual(["6.50"]);
-    expect(tags.get("currency")).toEqual(["EUR"]);
-    expect(tags.get("max_uses")).toEqual(["1"]);
-    expect(tags.get("availability")).toEqual(["available"]);
-    expect(tags.get("section")).toEqual(["Mains"]);
-    expect(tags.get("position")).toEqual(["2"]);
-    expect(tags.get("description")).toEqual(["Roasted tomato, basil oil"]);
+    expect(template.tags).toEqual([
+      ["d", "soup"],
+      ["title", "Tomato soup"],
+      ["price", "6.50", "EUR"],
+      ["availability", "available"],
+      ["product_kind", "food"],
+      ["section", "Mains"],
+      ["position", "2"],
+      ["summary", "Roasted tomato, basil oil"],
+    ]);
+  });
+
+  it("never emits legacy type/t/currency/max_uses markers", () => {
+    const template = buildMenuDefinition({ d: "soup", type: "food", draft: validDraft, position: 2 });
+    for (const legacy of ["type", "t", "currency", "max_uses", "name", "description"]) {
+      expect(tagValues(template, legacy)).toEqual([]);
+    }
   });
 
   it("omits optional tags when the draft leaves them blank", () => {
@@ -82,10 +83,9 @@ describe("buildMenuDefinition", () => {
       type: "food",
       draft: { ...validDraft, description: "  ", section: "" },
     });
-    const tags = tagsOf(template);
-    expect(tags.has("description")).toBe(false);
-    expect(tags.has("section")).toBe(false);
-    expect(tags.has("position")).toBe(false);
+    expect(tagValues(template, "summary")).toEqual([]);
+    expect(tagValues(template, "section")).toEqual([]);
+    expect(tagValues(template, "position")).toEqual([]);
   });
 
   it("throws on invalid drafts and invalid availability so they never publish", () => {
@@ -98,9 +98,9 @@ describe("buildMenuDefinition", () => {
   });
 });
 
-describe("buildMenuDefinitionUpdate (§3.1 update rule)", () => {
+describe("buildMenuDefinitionUpdate (addressable update rule)", () => {
   const item: MenuItem = {
-    address: `30009:${"a".repeat(64)}:soup`,
+    address: `30402:${"a".repeat(64)}:soup`,
     id: "f".repeat(64),
     d: "soup",
     author: "a".repeat(64),
@@ -114,23 +114,23 @@ describe("buildMenuDefinitionUpdate (§3.1 update rule)", () => {
     createdAt: 1_700_000_000,
   };
 
-  it("reuses the same d, type, and position for an availability flip", () => {
+  it("reuses the same d, product kind, and position for an availability flip", () => {
     const template = buildMenuDefinitionUpdate(item, { ...draftFromItem(item), availability: "unavailable" });
-    const tags = tagsOf(template);
-    expect(tags.get("d")).toEqual(["soup"]);
-    expect(tags.get("type")).toEqual(["food"]);
-    expect(tags.get("position")).toEqual(["1"]);
-    expect(tags.get("availability")).toEqual(["unavailable"]);
-    expect(tags.get("name")).toEqual(["Tomato soup"]);
-    expect(tags.get("price")).toEqual(["6.50"]);
+    expect(template.kind).toBe(KIND_LISTING);
+    expect(tagValues(template, "d")).toEqual([["soup"]]);
+    expect(tagValues(template, "product_kind")).toEqual([["food"]]);
+    expect(tagValues(template, "position")).toEqual([["1"]]);
+    expect(tagValues(template, "availability")).toEqual([["unavailable"]]);
+    expect(tagValues(template, "title")).toEqual([["Tomato soup"]]);
+    expect(tagValues(template, "price")).toEqual([["6.50", "EUR"]]);
   });
 
   it("archives and restores through the same addressable mechanism", () => {
     const archived = buildMenuDefinitionUpdate(item, { ...draftFromItem(item), availability: "archived" });
-    expect(tagsOf(archived).get("d")).toEqual(["soup"]);
-    expect(tagsOf(archived).get("availability")).toEqual(["archived"]);
+    expect(tagValues(archived, "d")).toEqual([["soup"]]);
+    expect(tagValues(archived, "availability")).toEqual([["archived"]]);
     const restored = buildMenuDefinitionUpdate(item, { ...draftFromItem(item), availability: "available" });
-    expect(tagsOf(restored).get("availability")).toEqual(["available"]);
+    expect(tagValues(restored, "availability")).toEqual([["available"]]);
   });
 
   it("derives the editor draft from the projected item", () => {

@@ -1,15 +1,16 @@
 import type { EventTemplate } from "nostr-tools";
 
-import { KIND_AWARD, KIND_DEFINITION } from "@/nostr/protocol";
+import { buildPermissionTag } from "@/access/nip97";
+import { KIND_AWARD, KIND_BADGE_DEFINITION } from "@/nostr/protocol";
 
-import { PERMISSIONS, isPermission, type Permission } from "./fold";
+import { PERMISSIONS, PERMISSION_CAPABILITIES, isPermission, type Permission } from "./fold";
 
 /**
- * People/roles write-side builders (venue-commerce-nip §3.6/§4, PRD §8.7).
- * Feature-local per the swarm contract — src/nostr/protocol.ts keeps the
- * order path only. Every builder validates before producing a template:
- * invalid identity, past expiry, or unknown permissions produce no write
- * (ROLE-03).
+ * People/roles write-side builders (NIP-97, spec of record ~/nips/97.md;
+ * PRD §8.7). Feature-local per the swarm contract — src/nostr/protocol.ts
+ * keeps the order path only. Every builder validates before producing a
+ * template: invalid identity, past expiry, or unknown permissions produce no
+ * write (ROLE-03).
  */
 
 export const KIND_DELETION = 5;
@@ -22,7 +23,7 @@ function nowSeconds(): number {
 
 function isDefinitionAddress(value: string): boolean {
   const [kind, author, ...d] = value.split(":");
-  return kind === String(KIND_DEFINITION) && HEX_64.test(author ?? "") && d.join(":").length > 0;
+  return kind === String(KIND_BADGE_DEFINITION) && HEX_64.test(author ?? "") && d.join(":").length > 0;
 }
 
 /**
@@ -45,7 +46,7 @@ export function buildRevocation({ awardId, reason }: { awardId: string; reason?:
 }
 
 export type RoleDefinitionParams = {
-  /** Stable `d`; editing reuses the same d (§3.1 update rule). */
+  /** Stable `d`; editing reuses the same d (addressable update rule). */
   d: string;
   name: string;
   description?: string;
@@ -53,8 +54,8 @@ export type RoleDefinitionParams = {
 };
 
 /**
- * Role definition (§3.6): kind 30009 with `type=role`, `t=role`, name,
- * optional description, and one repeated `permission` tag per selected
+ * Role definition (NIP-97 §Definitions): kind 30009 with `t=role`, name,
+ * optional description, and one NIP-97 `permission` tag per selected
  * permission in canonical matrix order.
  */
 export function buildRoleDefinition({ d, name, description, permissions }: RoleDefinitionParams): EventTemplate {
@@ -65,16 +66,15 @@ export function buildRoleDefinition({ d, name, description, permissions }: RoleD
   }
   const ordered = PERMISSIONS.filter((permission) => permissions.includes(permission));
   return {
-    kind: KIND_DEFINITION,
+    kind: KIND_BADGE_DEFINITION,
     created_at: nowSeconds(),
     content: "",
     tags: [
       ["d", d],
-      ["type", "role"],
       ["t", "role"],
       ["name", name.trim()],
       ...(description?.trim() ? [["description", description.trim()] as string[]] : []),
-      ...ordered.map((permission) => ["permission", permission] as string[]),
+      ...ordered.map((permission) => buildPermissionTag(PERMISSION_CAPABILITIES[permission])),
     ],
   };
 }
@@ -89,7 +89,11 @@ export type RoleAssignmentParams = {
   now?: number;
 };
 
-/** Role assignment (§4, ROLE-03): kind 8 with exact `a`/`p`/optional expiration. */
+/**
+ * Role assignment (NIP-97 §Awards, ROLE-03): kind 8 with exact `a`/`p`/
+ * optional expiration, plus the spec-required `t` query hints (definition
+ * kind and family topic).
+ */
 export function buildRoleAssignment({ roleAddress, holderPubkey, expiresAt, now }: RoleAssignmentParams): EventTemplate {
   if (!isDefinitionAddress(roleAddress)) throw new Error("The role does not have a valid definition address.");
   if (!HEX_64.test(holderPubkey)) throw new Error("The assignee is not a valid pubkey.");
@@ -105,6 +109,8 @@ export function buildRoleAssignment({ roleAddress, holderPubkey, expiresAt, now 
       ["a", roleAddress],
       ["p", holderPubkey.toLowerCase()],
       ...(expiresAt !== undefined ? [["expiration", String(expiresAt)] as string[]] : []),
+      ["t", String(KIND_BADGE_DEFINITION)],
+      ["t", "role"],
     ],
   };
 }

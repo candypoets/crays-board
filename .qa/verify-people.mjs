@@ -8,7 +8,7 @@ if (!state?.relay_url || !state?.active_award_id || !state?.role_address) {
   throw new Error('run .qa/relay-bootstrap-people.mjs first');
 }
 
-// Independent relay truth per venue-commerce-nip §11 (docs/screens/people.md).
+// Independent relay truth per NIP-97 (docs/screens/people.md).
 const pool = makePool();
 const revocations = await pool.querySync([state.relay_url], { kinds: [5], limit: 50 });
 const assignments = await pool.querySync([state.relay_url], { kinds: [8], '#p': [state.expiring_user_pubkey] });
@@ -19,8 +19,9 @@ const tag = (event, name) => event.tags.find((entry) => entry[0] === name)?.[1];
 const tags = (event, name) => event.tags.filter((entry) => entry[0] === name).map((entry) => entry[1]);
 
 // 1. Membership revocation (PEOPLE-04): exactly one kind 5 references the
-// revoked award id; the seeded fixture revocation is the only other one.
-assert(revocations.length === 2, `exactly two kind 5 events exist: the fixture and the app revocation (${revocations.length} found)`);
+// revoked award id. The other four are declared fixture cleanup: the expired
+// membership plus three temporary profile-writer capability revocations.
+assert(revocations.length === 5, `exactly five declared kind 5 events exist (${revocations.length} found)`);
 const appRevocations = revocations.filter((event) => tags(event, 'e').includes(state.active_award_id));
 assert(appRevocations.length === 1, `exactly one kind 5 references the revoked membership award (${appRevocations.length} found)`);
 const revocation = appRevocations[0];
@@ -28,6 +29,14 @@ assert(revocation.pubkey === state.admin_pubkey, 'revocation is signed by the st
 assert(tag(revocation, 'k') === '8', 'revocation carries the NIP-09 k=8 hint');
 assert(verifyEvent(revocation), 'revocation has a valid Nostr signature');
 assert(revocation.created_at >= state.active_award_created_at, 'revocation is not older than the award');
+const fixtureRevocationIds = new Set([state.expired_revocation_id, ...state.profile_writer_revocation_ids]);
+assert(
+  revocations.filter((event) => event.id !== revocation.id).every((event) => fixtureRevocationIds.has(event.id)),
+  'every non-app revocation is an explicitly recorded fixture cleanup event',
+);
+for (const awardId of state.profile_writer_award_ids) {
+  assert(revocations.some((event) => tags(event, 'e').includes(awardId)), 'temporary profile-writer award is revoked');
+}
 // Forbidden: no revocation touches any other award.
 assert(!revocations.some((event) => tags(event, 'e').includes(state.expiring_award_id)), 'no revocation references the expiring award');
 assert(!revocations.some((event) => tags(event, 'e').includes(state.award_id)), 'no revocation references the product order award');
@@ -40,6 +49,7 @@ const assignment = roleAwards[0];
 assert(tag(assignment, 'p') === state.expiring_user_pubkey, 'assignment p tag is the exact assigned user');
 assert(assignment.pubkey === state.admin_pubkey, 'assignment is signed by the staff (admin) pubkey');
 assert(tag(assignment, 'expiration') === undefined, 'permanent assignment carries no expiration tag');
+assert(tags(assignment, 't').includes('30009') && tags(assignment, 't').includes('role'), 'assignment carries NIP-97 role query hints');
 assert(verifyEvent(assignment), 'assignment has a valid Nostr signature');
 
 // 3. Role edit (ROLE-01/02): the republished definition keeps the same d and
@@ -50,11 +60,16 @@ assert(verifyEvent(assignment), 'assignment has a valid Nostr signature');
 assert(roleVersions.length >= 1, `role definition is queryable at its d (${roleVersions.length} versions found)`);
 assert(roleVersions.every((event) => event.pubkey === state.admin_pubkey), 'every role version is signed by the admin authority');
 const latest = roleVersions.reduce((a, b) => (b.created_at > a.created_at || (b.created_at === a.created_at && b.id > a.id) ? b : a));
-assert(tag(latest, 'type') === 'role' && tag(latest, 't') === 'role', 'latest role keeps type=role and t=role');
-const permissions = tags(latest, 'permission').sort();
+assert(tag(latest, 'type') === undefined && tags(latest, 't').includes('role'), 'latest role is classified only by t=role');
+const permissions = latest.tags
+  .filter((entry) => entry[0] === 'permission')
+  .map((entry) => entry.slice(1))
+  .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+const expectedPermissions = [['1', 'write'], ['31923', 'write'], ['invites']]
+  .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
 assert(
-  JSON.stringify(permissions) === JSON.stringify(['events', 'invites', 'posts']),
-  `latest role permission set is exactly posts+events+invites (${JSON.stringify(permissions)})`,
+  JSON.stringify(permissions) === JSON.stringify(expectedPermissions),
+  `latest role permissions map exactly to posts+events+invites (${JSON.stringify(permissions)})`,
 );
 assert(verifyEvent(latest), 'latest role definition has a valid Nostr signature');
 assert(latest.id !== state.role_definition_id, 'the latest role definition is a new event at the same d');

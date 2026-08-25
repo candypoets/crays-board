@@ -1,0 +1,28 @@
+# MENU-01/04/05/06 — phone catalog, availability, and editor journey.
+context platform=android timeout=600000
+env APP_ID=life.crays.board
+
+open "craysboard://qa-handoff?target=menu" --metro-port 8090
+wait "id=\"menu-screen\"" 60000
+wait "id=\"menu-item-qa-menu-espresso\"" 45000
+screenshot "${AD_ARTIFACTS}/20-menu-catalog.png"
+click "id=\"menu-chip-drinks\""
+scroll down 0.6
+wait "id=\"menu-foreign-note-qa-menu-foreign\"" 15000
+scroll up 0.6
+wait "id=\"menu-availability-toggle-qa-menu-espresso\"" 30000
+click "id=\"menu-availability-toggle-qa-menu-espresso\""
+wait text "Mark available" 20000
+screenshot "${AD_ARTIFACTS}/20-menu-toggled.png"
+click "id=\"menu-chip-mains\""
+wait "id=\"menu-item-qa-menu-soup\"" 15000
+click "id=\"menu-edit-qa-menu-soup\""
+wait "id=\"menu-editor\"" 15000
+fill "id=\"menu-field-name\"" "QA Roasted tomato soup"
+keyboard dismiss
+scroll down 0.45
+wait "id=\"menu-save-button\"" 60000
+click "id=\"menu-save-button\""
+wait text "QA Roasted tomato soup" 20000
+screenshot "${AD_ARTIFACTS}/20-menu-edited.png"
+close

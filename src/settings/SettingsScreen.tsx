@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 
 import { Button, EmptyState, ScreenTitle } from "@/components/ui";
 import { AppShell } from "@/shell/AppShell";
+import { useBreakpoint } from "@/shell/breakpoint";
 import { colors } from "@/theme/colors";
 import { useVenue } from "@/venue/VenueContext";
 
@@ -44,15 +45,17 @@ export function SettingsScreen({ initialSection = "profile" }: { initialSection?
   const { venue, restoring } = useVenue();
   const [section, setSection] = useState<SettingsSection>(initialSection);
   const data = useSettingsData();
+  const breakpoint = useBreakpoint();
+  const phone = breakpoint === "phone";
 
   const loaded = data.status === "ready";
 
   return (
     <View testID="settings-screen" style={styles.root}>
       <AppShell active="settings" permissions={ADMIN_PERMISSIONS}>
-        <View style={styles.container}>
+        <View style={[styles.container, phone && styles.containerPhone]}>
           <ScreenTitle title="Venue settings" description="Identity, memberships, payments, and room for this venue." />
-          <View style={styles.navRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.navScroll} contentContainerStyle={styles.navRow}>
             {SECTIONS.map((item) => {
               const active = item.id === section;
               return (
@@ -68,7 +71,7 @@ export function SettingsScreen({ initialSection = "profile" }: { initialSection?
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
           {restoring ? (
             <Text style={styles.loading}>Restoring the venue…</Text>
           ) : !venue ? (
@@ -109,11 +112,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 24,
-    maxWidth: 860,
+    maxWidth: 1260,
     width: "100%",
     alignSelf: "center",
   },
-  navRow: { flexDirection: "row", gap: 4, marginBottom: 18 },
+  containerPhone: { paddingHorizontal: 16, paddingTop: 18 },
+  navScroll: { flexGrow: 0, flexShrink: 0, marginBottom: 18 },
+  navRow: { flexDirection: "row", gap: 4, paddingRight: 16 },
   navItem: {
     minHeight: 48,
     justifyContent: "center",

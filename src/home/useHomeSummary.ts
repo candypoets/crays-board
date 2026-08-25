@@ -4,32 +4,40 @@ import { isEoce, isParsedEvent } from "@candypoets/nipworker/utils";
 import { useEffect, useMemo, useState } from "react";
 import { AppState } from "react-native";
 
+import {
+  deriveOrderRef,
+  entitlementTypeFor,
+  isNewerAnchor,
+  isSellableDefinition,
+  orderContextKey,
+  parseCommunityAnchor,
+  parsePermissionTags,
+  parseStatusContext,
+  type CommunityAnchor,
+} from "@/access/nip97";
+import { fetchRelayRootPubkey, trustFromAnchor } from "@/access/trust";
 import { getNostrRuntime } from "@/nostr/manager";
 import {
+  KIND_ANCHOR,
   KIND_AWARD,
-  KIND_DEFINITION,
+  KIND_BADGE_DEFINITION,
+  KIND_LISTING,
+  KIND_REVOCATION,
   KIND_STATUS,
   KIND_VENUE_PROFILE,
-  type OrderContext,
   type PublishedOrderStatus,
 } from "@/nostr/protocol";
-import {
-  projectOrders,
-  type AwardInput,
-  type DefinitionInput,
-  type StatusInput,
-} from "@/orders/fold";
 import { useVenue } from "@/venue/VenueContext";
-import { fetchVenueTrust } from "@/venue/trust";
 
 import {
   homeMarkerPayload,
   projectHomeSummary,
   KIND_CALENDAR_EVENT,
-  KIND_DELETION,
+  type HomeAwardInput,
   type HomeCalendarEventInput,
   type HomeDefinitionInput,
   type HomeProfileInput,
+  type HomeStatusInput,
   type HomeSummary,
 } from "./summary";
 
@@ -41,15 +49,15 @@ export type HomeResult = {
   error?: string;
 };
 
-type HomeDefinition = DefinitionInput & HomeDefinitionInput;
-
 type Buffer = {
-  awards: Map<string, AwardInput>;
-  definitions: Map<string, HomeDefinition>;
-  statuses: Map<string, StatusInput>;
+  awards: Map<string, HomeAwardInput>;
+  definitions: Map<string, HomeDefinitionInput>;
+  statuses: Map<string, HomeStatusInput>;
   calendarEvents: Map<string, HomeCalendarEventInput>;
   deletions: Map<string, { id: string; authorPubkey: string; references: string[]; createdAt: number }>;
   profiles: Map<string, HomeProfileInput>;
+  /** Latest root-signed community anchor (NIP-97 trust source). */
+  anchor: CommunityAnchor | null;
 };
 
 const emptyBuffer = (): Buffer => ({
@@ -59,40 +67,58 @@ const emptyBuffer = (): Buffer => ({
   calendarEvents: new Map(),
   deletions: new Map(),
   profiles: new Map(),
+  anchor: null,
 });
 
-const HOME_KINDS = [KIND_AWARD, KIND_DEFINITION, KIND_STATUS, KIND_VENUE_PROFILE, KIND_CALENDAR_EVENT, KIND_DELETION];
+const HOME_KINDS = [
+  KIND_AWARD,
+  KIND_BADGE_DEFINITION,
+  KIND_LISTING,
+  KIND_STATUS,
+  KIND_VENUE_PROFILE,
+  KIND_CALENDAR_EVENT,
+  KIND_REVOCATION,
+  KIND_ANCHOR,
+];
+
+const PUBLISHED_STATUSES: ReadonlySet<string> = new Set([
+  "accepted",
+  "processing",
+  "ready",
+  "fulfilled",
+  "cancelled",
+]);
 
 /**
  * Subscription coordinator for the Home attention summary (PRD §8.3). Owns
  * exactly one stable subscription (`board_home_<sanitized relay>`), extracts
- * plain inputs at the worker boundary, folds orders through the shared
- * src/orders projection, and derives the remaining counts through the pure
- * projection in summary.ts. EOSE is the loaded signal. Cleanup unsubscribes
- * on unmount, venue change, and backgrounding.
+ * plain NIP-97 inputs at the worker boundary, and folds them through the
+ * pure projection in summary.ts. Trust is NIP-97: the relay's NIP-11 root
+ * key authenticates the latest anchor event, which declares the admins and
+ * the delegated badge issuer. EOSE is the loaded signal. Cleanup
+ * unsubscribes on unmount, venue change, and backgrounding.
  */
 export function useHomeSummary(): HomeResult {
   const { venue, restoring } = useVenue();
   const relayUrl = venue?.relayUrl;
-  const serviceUrl = venue?.serviceUrl;
 
-  const [trustedIssuers, setTrustedIssuers] = useState<ReadonlySet<string> | null>(null);
+  const [rootPubkey, setRootPubkey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [buffer, setBuffer] = useState<Buffer>(emptyBuffer);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
-  // Issuer trust (venue-commerce-nip §4/§9): NIP-11 venue authorities plus the
-  // badge issuer advertised by /community/info.
+  // NIP-97 trust root: the venue relay's NIP-11 community key. Only the
+  // anchor signed by this key declares the venue's admins and badge issuer.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTrustedIssuers(null);
+    setRootPubkey(null);
     setError(null);
-    if (!relayUrl || !serviceUrl) return;
+    if (!relayUrl) return;
     let cancelled = false;
-    fetchVenueTrust(relayUrl, serviceUrl)
-      .then((trust) => {
-        if (!cancelled) setTrustedIssuers(trust.trustedIssuers);
+    fetchRelayRootPubkey(relayUrl)
+      .then((pubkey) => {
+        if (!cancelled) setRootPubkey(pubkey);
       })
       .catch((cause: unknown) => {
         if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
@@ -100,7 +126,7 @@ export function useHomeSummary(): HomeResult {
     return () => {
       cancelled = true;
     };
-  }, [relayUrl, serviceUrl]);
+  }, [relayUrl]);
 
   // The single home subscription. Same deep-link foreground settle pattern as
   // src/orders/useOrders.ts.
@@ -108,7 +134,7 @@ export function useHomeSummary(): HomeResult {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBuffer(emptyBuffer());
     setLoaded(false);
-    if (!relayUrl) return;
+    if (!relayUrl || !rootPubkey) return;
     if (!getNostrRuntime().manager) {
       setError("The secure Nostr engine is unavailable. Use a Crays development build.");
       return;
@@ -138,6 +164,17 @@ export function useHomeSummary(): HomeResult {
       if (!event) return;
       const kind = event.kind();
 
+      if (kind === KIND_ANCHOR) {
+        const anchor = parseCommunityAnchor(event);
+        // Only the relay's own root key may declare the community admins.
+        if (!anchor || anchor.pubkey.toLowerCase() !== rootPubkey.toLowerCase()) return;
+        setBuffer((current) => {
+          if (current.anchor && !isNewerAnchor(anchor, current.anchor)) return current;
+          return { ...current, anchor };
+        });
+        return;
+      }
+
       if (kind === KIND_AWARD) {
         const id = event.id() ?? "";
         const issuerPubkey = (event.pubkey() ?? "").toLowerCase();
@@ -145,11 +182,17 @@ export function useHomeSummary(): HomeResult {
         const holderPubkey = (extractTagValue(event, "p") ?? "").toLowerCase();
         if (!id || !issuerPubkey || !definitionAddress || !holderPubkey) return;
         const expiration = Number(extractTagValue(event, "expiration"));
-        const award: AwardInput = {
+        const orderRef = deriveOrderRef({
+          awardId: id,
+          order: extractTagValue(event, "order") ?? undefined,
+          i: extractTagValue(event, "i") ?? undefined,
+        });
+        const award: HomeAwardInput = {
           id,
           issuerPubkey,
           definitionAddress,
           holderPubkey,
+          orderContextKey: orderContextKey(orderRef),
           createdAt: event.createdAt(),
           ...(Number.isSafeInteger(expiration) && expiration > 0 ? { expiresAt: expiration } : {}),
         };
@@ -157,28 +200,31 @@ export function useHomeSummary(): HomeResult {
         return;
       }
 
-      if (kind === KIND_DEFINITION) {
+      if (kind === KIND_BADGE_DEFINITION || kind === KIND_LISTING) {
         const d = extractTagValue(event, "d");
         const author = (event.pubkey() ?? "").toLowerCase();
         const id = event.id() ?? "";
         if (!d || !author || !id) return;
-        const address = `${KIND_DEFINITION}:${author}:${d}`;
+        const address = `${kind}:${author}:${d}`;
         const createdAt = event.createdAt();
-        const maxUses = Number(extractTagValue(event, "max_uses"));
-        const name = extractTagValue(event, "name");
-        const type = extractTagValue(event, "type");
+        // NIP-97 grammar: 30402 listings name via `title`, 30009 badge
+        // definitions via `name`; classification derives from the shape.
+        const name = kind === KIND_LISTING ? extractTagValue(event, "title") : extractTagValue(event, "name");
+        const type = entitlementTypeFor(kind, event);
         const availability = extractTagValue(event, "availability");
-        const definition: HomeDefinition = {
+        const definition: HomeDefinitionInput = {
           address,
           id,
+          authorPubkey: author,
           createdAt,
           ...(name ? { name } : {}),
           ...(type ? { type } : {}),
-          sellable: extractTagValues(event, "t").includes("sellable"),
-          ...(Number.isSafeInteger(maxUses) && maxUses > 0 ? { maxUses } : {}),
+          sellable: isSellableDefinition(event),
+          ...(type === "role" ? { permissions: parsePermissionTags(event) } : {}),
           ...(availability ? { availability } : {}),
         };
         setBuffer((current) => {
+          // Addressable definitions resolve as the latest per address.
           const previous = current.definitions.get(address);
           if (
             previous &&
@@ -193,20 +239,39 @@ export function useHomeSummary(): HomeResult {
 
       if (kind === KIND_STATUS) {
         const id = event.id() ?? "";
-        const authorPubkey = (event.pubkey() ?? "").toLowerCase();
-        // §6.7 resolution: stage-scoped d (<awardId>:<status>); e is the stable
-        // order/event context, so readers must group by e first.
-        const contextKey = extractTagValue(event, "e") || extractTagValue(event, "d") || "";
+        const signerPubkey = (event.pubkey() ?? "").toLowerCase();
         const status = extractTagValue(event, "status");
-        const context = extractTagValue(event, "context");
-        if (!id || !authorPubkey || !contextKey || !status) return;
-        if (context !== "order" && context !== "event") return;
-        const entry: StatusInput = {
+        const awardId = (extractTagValue(event, "e") ?? "").toLowerCase();
+        const definitionAddress = extractTagValue(event, "a") ?? "";
+        const holderPubkey = (extractTagValue(event, "p") ?? "").toLowerCase();
+        // NIP-97: `d` must equal the single order/event context tag prefixed
+        // with its name; statuses failing this are dropped.
+        const context = parseStatusContext({
+          order: extractTagValue(event, "order") ?? undefined,
+          event: extractTagValue(event, "event") ?? undefined,
+          d: extractTagValue(event, "d") ?? undefined,
+        });
+        if (
+          !id ||
+          !signerPubkey ||
+          !awardId ||
+          !definitionAddress ||
+          !holderPubkey ||
+          !status ||
+          !context
+        ) {
+          return;
+        }
+        if (!PUBLISHED_STATUSES.has(status)) return;
+        const entry: HomeStatusInput = {
           id,
-          authorPubkey,
-          contextKey,
+          signerPubkey,
+          awardId,
+          definitionAddress,
+          holderPubkey,
+          contextKey: context.key,
+          contextType: context.type,
           status: status as PublishedOrderStatus,
-          context: context as OrderContext,
           createdAt: event.createdAt(),
         };
         setBuffer((current) => ({ ...current, statuses: new Map(current.statuses).set(id, entry) }));
@@ -237,7 +302,7 @@ export function useHomeSummary(): HomeResult {
         return;
       }
 
-      if (kind === KIND_DELETION) {
+      if (kind === KIND_REVOCATION) {
         const id = event.id() ?? "";
         const authorPubkey = (event.pubkey() ?? "").toLowerCase();
         const references = extractTagValues(event, "e");
@@ -299,7 +364,7 @@ export function useHomeSummary(): HomeResult {
       appStateSubscription.remove();
       stop();
     };
-  }, [relayUrl]);
+  }, [relayUrl, rootPubkey]);
 
   // Ticker so oldest-wait and expiring-soon stay current.
   useEffect(() => {
@@ -308,28 +373,23 @@ export function useHomeSummary(): HomeResult {
     return () => clearInterval(timer);
   }, [relayUrl]);
 
+  const trust = useMemo(() => (buffer.anchor ? trustFromAnchor(buffer.anchor) : null), [buffer.anchor]);
+
   const summary = useMemo<HomeSummary | null>(() => {
-    if (!trustedIssuers) return null;
-    const orders = projectOrders({
-      awards: [...buffer.awards.values()],
-      definitions: [...buffer.definitions.values()],
-      statuses: [...buffer.statuses.values()],
-      trustedIssuers,
-      now,
-    });
+    if (!trust) return null;
     return projectHomeSummary({
-      orders,
       profiles: [...buffer.profiles.values()],
       definitions: [...buffer.definitions.values()],
       awards: [...buffer.awards.values()],
+      statuses: [...buffer.statuses.values()],
       calendarEvents: [...buffer.calendarEvents.values()],
       deletions: [...buffer.deletions.values()],
-      trustedIssuers,
+      trust,
       now,
     });
-  }, [trustedIssuers, buffer, now]);
+  }, [trust, buffer, now]);
 
-  const live = Boolean(relayUrl && trustedIssuers && !error);
+  const live = Boolean(relayUrl && trust && !error);
 
   // Fixed QA contract: one projection marker per summary change.
   useEffect(() => {
@@ -340,6 +400,6 @@ export function useHomeSummary(): HomeResult {
   if (restoring) return { status: "loading", live: false, summary: null };
   if (error) return { status: "error", live: false, summary: null, error };
   if (!venue) return { status: "ready", live: false, summary: null };
-  if (!loaded || !trustedIssuers || !summary) return { status: "loading", live, summary: null };
+  if (!loaded || !trust || !summary) return { status: "loading", live, summary: null };
   return { status: "ready", live, summary };
 }

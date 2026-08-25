@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crays Board — Tablet · landscape UX map</title>
+<style>
+  :root { color-scheme: dark; --night: #180b14; --rail: #2a0d20; --ink: #24151e;
+    --paper: #fff4f7; --pink: #ff3d8d; --coral: #ff7a70; --mint: #70d7ae;
+    --muted: #bc9eae; --line: #5b2d47; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--night);
+    font: 13px/1.4 ui-sans-serif, system-ui, sans-serif; color: var(--paper); }
+  #board { position: absolute; inset: 0; cursor: grab; }
+  #board.dragging { cursor: grabbing; }
+  #world { position: absolute; transform-origin: 0 0; }
+  .column-title { position: absolute; font-size: 15px; font-weight: 600;
+    color: #dcb8ca; letter-spacing: .04em; text-transform: uppercase;
+    white-space: nowrap; }
+  .frame { position: absolute; background: #351426;
+    border-radius: 14px; padding: 8px; box-shadow: 0 10px 28px rgba(5,0,3,.38); }
+  .frame img { display: block; width: 100%; border-radius: 6px; }
+  .frame .label { padding: 8px 3px 2px; color: #f8dfe9; font-size: 12px;
+    display: flex; justify-content: space-between; gap: 12px; }
+  .frame .label span:last-child { color: var(--muted); white-space: nowrap; }
+  .missing-surface { height: 100%; min-height: 360px; border-radius: 8px;
+    background: #27101e; display: grid; place-content: center; padding: 30px;
+    box-sizing: border-box; text-align: center; color: #f4dce7; }
+  .missing-surface strong { display: block; margin-block: 14px 8px; font-size: 18px;
+    overflow-wrap: anywhere; }
+  .missing-surface p { max-width: 28ch; margin: 0 auto; color: #cdaabd; font-size: 14px; }
+  .capture-state { display: inline-flex; align-items: center; justify-self: center; gap: 8px;
+    color: #ffd0de; font-weight: 700; }
+  .capture-state::before { content: ''; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--coral); }
+  #edges { position: absolute; overflow: visible; pointer-events: none; }
+  #hud { position: fixed; top: 12px; left: 12px; z-index: 10; display: flex;
+    gap: 8px; align-items: center; background: rgba(42,13,32,.94);
+    border-radius: 14px; padding: 9px 12px; box-shadow: 0 8px 30px rgba(5,0,3,.35); }
+  #hud button { background: #4a1832; color: var(--paper); border: 0;
+    border-radius: 8px; min-width: 40px; min-height: 38px; padding: 6px 11px;
+    cursor: pointer; font: inherit; }
+  #hud button:hover { background: #652043; }
+  #hud button:focus-visible, #hud select:focus-visible { outline: 3px solid var(--pink); outline-offset: 2px; }
+  #hud select { background: #4a1832; color: var(--paper); border: 0;
+    border-radius: 8px; min-height: 38px; padding: 6px 10px; font: inherit; }
+  #hud .meta { color: #d6afc2; }
+  .legend { display: inline-flex; gap: 10px; color: #d6afc2; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .legend i { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
+  .legend .pending i { background: var(--coral); }
+  @media (max-width: 860px) {
+    #hud { right: 12px; flex-wrap: wrap; }
+    #hud .meta { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div id="hud">
+  <strong>Crays Board · Tablet · landscape</strong>
+  <button id="zoom-out">−</button>
+  <button id="zoom-in">+</button>
+  <button id="reset">Reset view</button>
+  <select id="jump"><option value="">Jump to journey…</option></select>
+  <span class="legend" aria-label="Capture legend"><span><i></i>Captured</span><span class="pending"><i></i>Pending</span></span>
+  <span class="meta" id="meta"></span>
+</div>
+<div id="board">
+  <div id="world">
+    <svg id="edges"></svg>
+  </div>
+</div>
+<script>
+const MANIFEST = {"generatedAt":"2026-08-23T09:46:01.544Z","runId":"battle-2026-08-23","apkSha256":"e6b5f2b1347cd0489ac2be91ae34ff638c7c027ff1590e486fcf9dc3d7693169","profile":"tablet","profileLabel":"Tablet · landscape","device":{"serial":"emulator-5554","avd":"crays_samsung_tab","model":"sdk_gphone64_x86_64","product":"emu64xa","apiLevel":34,"width":1600,"height":1000,"density":240,"orientation":"landscape","widthDp":1067,"observations":{"size":{"physical":[1600,1000],"override":null},"density":{"physical":240,"override":null},"surfaceRotation":0,"userRotation":0,"commands":["wm size","wm density","dumpsys input","settings get system user_rotation"]}},"receipt":{"file":"run-receipt.json","sha256":"7119feb75ab5573fc16bc4649a5c3aa953ce486b5ba3e33d5d6dea5a2ebbc21b","revisionDigest":"c7bf6da4d0f142fb0581b585f8e852efac867770eb960cf6d00a0c5593c752a8"},"sourceRoot":"tablet","expectedCount":30,"capturedCount":30,"missingCount":0,"journeys":[{"id":"entry","title":"Entry"},{"id":"create-venue","title":"Create venue"},{"id":"home","title":"Home"},{"id":"orders","title":"Orders"},{"id":"menu","title":"Menu"},{"id":"events","title":"Events & check-in"},{"id":"people","title":"People & roles"},{"id":"invites","title":"Invites"},{"id":"settings","title":"Settings"}],"screens":[{"name":"00-welcome","journey":"entry","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:37:39.408Z","sha256":"9f34357e2d240de7712f041bce8c8399801ba0fa3d8c2fe84985d67d86da7a14","source":"welcome/ce0fb9c7c05353f6/e2e__flows__00-welcome.ad/attempt-1/00-welcome.png"},{"name":"05-venue-selection","journey":"entry","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:38:09.263Z","sha256":"cf6d07e8112edc1406f978472bd1de0e6e1a89c5ee41de11047d72263431647f","source":"venue-selection/88f10a8cdb45718d/e2e__flows__05-venue-selection.ad/attempt-1/05-venue-selection.png"},{"name":"10-orders-accepted","journey":"orders","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:38:37.471Z","sha256":"218b0d8a8b8c870031422622bd8f6ef6a32fd466e67ac90b54739290884fa0fa","source":"orders/818da099513ba6a5/e2e__flows__10-orders.ad/attempt-1/10-orders-accepted.png"},{"name":"11-orders-ladder-advance-served","journey":"orders","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:39:11.518Z","sha256":"3aa0acaeb1ce8e9f4ee3629f3cf75ae1248964e6780e0b08cbf4b07827d7282a","source":"orders-ladder/50bea267c862ca2e/e2e__flows__11-orders-ladder.tablet.ad/attempt-1/11-orders-ladder-advance-served.png"},{"name":"11-orders-ladder-declined","journey":"orders","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:39:15.138Z","sha256":"2e4f89d157372788a790e4784fe0285cc0b91201f9bcae25dbe765989cb9f79c","source":"orders-ladder/50bea267c862ca2e/e2e__flows__11-orders-ladder.tablet.ad/attempt-1/11-orders-ladder-declined.png"},{"name":"11-orders-ladder-cancel-dialog","journey":"orders","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:39:20.590Z","sha256":"3c0bf06aa4ca53a248bee97760318494e420d0988f6b7f2e33a8c22335fa68ae","source":"orders-ladder/50bea267c862ca2e/e2e__flows__11-orders-ladder.tablet.ad/attempt-1/11-orders-ladder-cancel-dialog.png"},{"name":"11-orders-ladder-final","journey":"orders","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:39:23.266Z","sha256":"05b186b4a868e3477dbdb1edd59d4b486809dcea3ba79d22bf327d5d51d67492","source":"orders-ladder/50bea267c862ca2e/e2e__flows__11-orders-ladder.tablet.ad/attempt-1/11-orders-ladder-final.png"},{"name":"20-menu-catalog","journey":"menu","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:39:53.294Z","sha256":"dab9580cdb7f46eda967fde9dd025286571a34910f026e4e811f2ede101d526c","source":"menu/137cf2a116458798/e2e__flows__20-menu.tablet.ad/attempt-1/20-menu-catalog.png"},{"name":"20-menu-toggled","journey":"menu","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:39:58.478Z","sha256":"5961927f4230ca133947a1e7b8ae0a18024be2f07862fef4e2d110e2de3b7a8e","source":"menu/137cf2a116458798/e2e__flows__20-menu.tablet.ad/attempt-1/20-menu-toggled.png"},{"name":"20-menu-edited","journey":"menu","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:40:06.094Z","sha256":"c7b24ca6ac40b78cdd690831bd2dac254f1f41880b1b0900a1d1048406bd47ba","source":"menu/137cf2a116458798/e2e__flows__20-menu.tablet.ad/attempt-1/20-menu-edited.png"},{"name":"30-events-detail","journey":"events","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:40:45.065Z","sha256":"8f09a62c8f4bbde93713b23922a855e81fb39b84b04267fcedcefc5bcc976516","source":"events/00f74e8d1a237150/e2e__flows__30-events.tablet.ad/attempt-1/30-events-detail.png"},{"name":"30-events-created","journey":"events","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:41:11.297Z","sha256":"3f59f4253b55bbb330cb6b31f80d09275126999775a3b0eb10d817ffb3b6dc5a","source":"events/00f74e8d1a237150/e2e__flows__30-events.tablet.ad/attempt-1/30-events-created.png"},{"name":"31-check-in-ready","journey":"events","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:41:42.064Z","sha256":"c4c83702f6c9d91ae5704e422bb040b743f44a10f6ee47c9c2ef6c2df0cc633c","source":"check-in/7670e02f6794d7b8/e2e__flows__31-check-in.tablet.ad/attempt-1/31-check-in-ready.png"},{"name":"31-check-in-accepted","journey":"events","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:41:48.828Z","sha256":"fcba01ec48c639691426a21f6d2f8185c9c8386dd8991f7634c10a52e2242e04","source":"check-in/7670e02f6794d7b8/e2e__flows__31-check-in.tablet.ad/attempt-1/31-check-in-accepted.png"},{"name":"31-check-in-already-checked-in","journey":"events","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:41:55.684Z","sha256":"9b538da7f2fc73a0446aa13ee11f7b62683984df6bd8f89fd87e771d9fcb6b24","source":"check-in/7670e02f6794d7b8/e2e__flows__31-check-in.tablet.ad/attempt-1/31-check-in-already-checked-in.png"},{"name":"31-check-in-wrong-event","journey":"events","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:42:02.616Z","sha256":"a09c4c8bcf5adb34dceed6e628e9993efd57198892b456b1af619d7921536e06","source":"check-in/7670e02f6794d7b8/e2e__flows__31-check-in.tablet.ad/attempt-1/31-check-in-wrong-event.png"},{"name":"31-check-in-camera-unavailable","journey":"events","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:42:05.036Z","sha256":"7f072a3e1561152d8e33a5a3cbd7abee4cc1efec3d13dcd45daebfa427961fea","source":"check-in/7670e02f6794d7b8/e2e__flows__31-check-in.tablet.ad/attempt-1/31-check-in-camera-unavailable.png"},{"name":"40-people-list","journey":"people","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:42:51.776Z","sha256":"7f5cc50dc7de450e22699fa455d33c6eb6227a23d83a248f6de3068c98cd30c6","source":"people/7bcbec9e6d0e924d/e2e__flows__40-people.tablet.ad/attempt-1/40-people-list.png"},{"name":"40-people-revoked","journey":"people","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:42:55.731Z","sha256":"d22ed4a692d2dbe2380bb0e61d4815b37846aca82834e15e7448128dbc79100d","source":"people/7bcbec9e6d0e924d/e2e__flows__40-people.tablet.ad/attempt-1/40-people-revoked.png"},{"name":"40-people-role-saved","journey":"people","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:43:03.219Z","sha256":"a588abe9c222d1331eab55b2582435ddd4344b8415e7ed6e30e916e288a013e7","source":"people/7bcbec9e6d0e924d/e2e__flows__40-people.tablet.ad/attempt-1/40-people-role-saved.png"},{"name":"40-people-assigned","journey":"people","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:43:09.379Z","sha256":"40f92330d6b378eb131c6ab000e3375e57bd30da432287ea0a6269050bde2c0d","source":"people/7bcbec9e6d0e924d/e2e__flows__40-people.tablet.ad/attempt-1/40-people-assigned.png"},{"name":"50-invites-result","journey":"invites","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:43:43.263Z","sha256":"986f8d90e3241a6bee40cfdd4a1eb815dc6931447504e11905e51be427703afe","source":"invites/6f85303555d2a026/e2e__flows__50-invites.tablet.ad/attempt-1/50-invites-result.png"},{"name":"60-settings-profile-saved","journey":"settings","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:44:20.746Z","sha256":"2fac5950f6505614b0b8ee95e2ce22e18cc5c27a93db19ada769060eeb17fe93","source":"settings/aaffff7806d42987/e2e__flows__60-settings.tablet.ad/attempt-1/60-settings-profile-saved.png"},{"name":"60-settings-membership-unavailable","journey":"settings","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:44:24.646Z","sha256":"fcfa3f17cae743a90c77fdb66fc0e49cf5c78ed8f39f797d643ac1fa76147f9e","source":"settings/aaffff7806d42987/e2e__flows__60-settings.tablet.ad/attempt-1/60-settings-membership-unavailable.png"},{"name":"60-settings-payments-not-configured","journey":"settings","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:44:27.326Z","sha256":"272610c1082959d84f33e307838fd5dc5a4e0277ef2efc37016228e0c1d04ca8","source":"settings/aaffff7806d42987/e2e__flows__60-settings.tablet.ad/attempt-1/60-settings-payments-not-configured.png"},{"name":"60-settings-room","journey":"settings","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:44:30.698Z","sha256":"07c6e504edb9036779e47daf626e5abf1cb161bb04aadbafc06a134d7e3ea97e","source":"settings/aaffff7806d42987/e2e__flows__60-settings.tablet.ad/attempt-1/60-settings-room.png"},{"name":"70-create-venue-success","journey":"create-venue","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:45:52.113Z","sha256":"85679e45743c141d2bd511abf09783ce5cdad55378157360446452b686788acf","source":"create-venue/53053aeacb31d69f/e2e__flows__70-create-venue.ad/attempt-1/70-create-venue-success.png"},{"name":"70-create-venue-home","journey":"create-venue","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:45:54.405Z","sha256":"578b8df7545af4638ed3be8a1b0940596eb6d8ca04c1d8f88f2160b26e066c88","source":"create-venue/53053aeacb31d69f/e2e__flows__70-create-venue.ad/attempt-1/70-create-venue-home.png"},{"name":"80-home-summary","journey":"home","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:45:07.866Z","sha256":"b6314ab808e8f9c960fae7b0b091f4b8351cc116678dee6f11998399e4d1e368","source":"home/2e7b1be31dd27c1f/e2e__flows__80-home.tablet.ad/attempt-1/80-home-summary.png"},{"name":"80-home-orders-destination","journey":"home","w":1600,"h":1000,"status":"captured","capturedAt":"2026-08-23T09:45:10.186Z","sha256":"227d7103c787d24d5a6ec54c23445c8a4e9faf4119174eb669920baa609ac463","source":"home/2e7b1be31dd27c1f/e2e__flows__80-home.tablet.ad/attempt-1/80-home-orders-destination.png"}]};
+</script>
+<script>
+(function () {
+  const COL_W = 340, COL_GAP = 90, ROW_GAP = 70, TOP = 70, PAD = 40;
+  const world = document.getElementById('world');
+  const board = document.getElementById('board');
+  const edges = document.getElementById('edges');
+  const frames = new Map();
+  const journeyAnchor = new Map();
+
+  // Layout: one column per journey, screens stacked in name order.
+  MANIFEST.journeys.forEach((j, col) => {
+    const x = PAD + col * (COL_W + COL_GAP);
+    const title = document.createElement('div');
+    title.className = 'column-title';
+    title.textContent = j.title;
+    title.style.left = x + 'px';
+    title.style.top = PAD + 'px';
+    world.appendChild(title);
+    journeyAnchor.set(j.id, { x, y: PAD });
+
+    let y = PAD + TOP;
+    MANIFEST.screens.filter(s => s.journey === j.id).forEach((s) => {
+      const h = Math.round(COL_W * s.h / s.w);
+      const el = document.createElement('div');
+      el.className = 'frame ' + s.status;
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.width = COL_W + 'px';
+      if (s.status === 'captured') {
+        el.innerHTML = '<a href="screens/' + s.name + '.png" target="_blank">' +
+          '<img src="screens/' + s.name + '.png" alt="' + s.name + '"></a>' +
+          '<div class="label"><span>' + s.name + '</span><span>' + s.capturedAt.slice(0, 10) + '</span></div>';
+      } else {
+        el.innerHTML = '<div class="missing-surface" style="height:' + h + 'px" role="img" ' +
+          'aria-label="Capture pending for ' + s.name + '">' +
+          '<span class="capture-state">Capture pending</span><strong>' + s.name + '</strong>' +
+          '<p>This screen is part of the current Agent Device journey but was not reached in the latest QA artifacts.</p></div>' +
+          '<div class="label"><span>' + s.name + '</span><span>Not captured</span></div>';
+      }
+      world.appendChild(el);
+      frames.set(s.name, { x, y, w: COL_W, h });
+      y += h + ROW_GAP;
+    });
+  });
+
+  // Arrows between consecutive screens inside each journey column.
+  const NS = 'http://www.w3.org/2000/svg';
+  MANIFEST.journeys.forEach((j) => {
+    const list = MANIFEST.screens.filter(s => s.journey === j.id);
+    for (let i = 0; i + 1 < list.length; i += 1) {
+      const a = frames.get(list[i].name), b = frames.get(list[i + 1].name);
+      const x1 = a.x + a.w / 2, y1 = a.y + a.h + 34;
+      const x2 = b.x + b.w / 2, y2 = b.y - 8;
+      const line = document.createElementNS(NS, 'line');
+      line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+      line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+      line.setAttribute('stroke', '#76405c'); line.setAttribute('stroke-width', '2');
+      edges.appendChild(line);
+      const head = document.createElementNS(NS, 'circle');
+      head.setAttribute('cx', x2); head.setAttribute('cy', y2);
+      head.setAttribute('r', '4'); head.setAttribute('fill', '#ff7a70');
+      edges.appendChild(head);
+    }
+  });
+
+  // Pan + zoom.
+  let scale = 1, tx = 0, ty = 0;
+  function apply() { world.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')'; }
+  function zoomAt(factor, cx, cy) {
+    const next = Math.min(3, Math.max(0.1, scale * factor));
+    tx = cx - (cx - tx) * (next / scale);
+    ty = cy - (cy - ty) * (next / scale);
+    scale = next; apply();
+  }
+  board.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    zoomAt(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY);
+  }, { passive: false });
+  let drag = null;
+  board.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('a,button,select')) return;
+    drag = { x: e.clientX - tx, y: e.clientY - ty };
+    board.classList.add('dragging');
+    board.setPointerCapture(e.pointerId);
+  });
+  board.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    tx = e.clientX - drag.x; ty = e.clientY - drag.y; apply();
+  });
+  board.addEventListener('pointerup', () => { drag = null; board.classList.remove('dragging'); });
+
+  // HUD.
+  document.getElementById('zoom-in').onclick = () => zoomAt(1.25, innerWidth / 2, innerHeight / 2);
+  document.getElementById('zoom-out').onclick = () => zoomAt(1 / 1.25, innerWidth / 2, innerHeight / 2);
+  document.getElementById('reset').onclick = () => {
+    const worldWidth = PAD * 2 + MANIFEST.journeys.length * COL_W +
+      (MANIFEST.journeys.length - 1) * COL_GAP;
+    scale = Math.min(0.55, (innerWidth - 60) / worldWidth);
+    tx = 30; ty = 76; apply();
+  };
+  const jump = document.getElementById('jump');
+  MANIFEST.journeys.forEach((j) => {
+    const o = document.createElement('option');
+    o.value = j.id; o.textContent = j.title;
+    jump.appendChild(o);
+  });
+  jump.onchange = () => {
+    const a = journeyAnchor.get(jump.value);
+    if (!a) return;
+    scale = 0.8; tx = 60 - a.x * scale; ty = 96 - a.y * scale; apply();
+  };
+  document.getElementById('meta').textContent =
+    MANIFEST.capturedCount + '/' + MANIFEST.expectedCount + ' captured · ' +
+    MANIFEST.missingCount + ' pending · generated ' + MANIFEST.generatedAt.slice(0, 16).replace('T', ' ') + 'Z';
+  document.getElementById('reset').click();
+})();
+</script>
+</body>
+</html>

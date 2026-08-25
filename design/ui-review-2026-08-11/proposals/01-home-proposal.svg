@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <style>
+      .ui { font-family: Arial, Helvetica, sans-serif; fill: #2B1420; }
+      .muted { fill: #735966; }
+      .faint { fill: #A58D98; }
+      .rail { fill: #F5DDE5; }
+      .white { fill: #FFFFFF; }
+      .bold { font-weight: 700; }
+      .heavy { font-weight: 800; }
+      .label { font-size: 14px; font-weight: 700; }
+      .body { font-size: 16px; }
+      .small { font-size: 13px; }
+      .tiny { font-size: 11px; }
+      .stroke { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+    </style>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#2B1420" flood-opacity="0.07"/>
+    </filter>
+  </defs>
+
+  <!-- Android safe status area -->
+  <rect width="1600" height="1000" fill="#FFF7F8"/>
+  <rect width="1600" height="32" fill="#160A11"/>
+  <text x="20" y="22" class="ui white small bold">15:58</text>
+  <circle cx="1518" cy="16" r="4" fill="#FFFFFF"/>
+  <path d="M1533 20c8-9 18-9 26 0M1538 20c5-5 11-5 16 0" class="stroke" stroke="#FFFFFF"/>
+  <rect x="1570" y="9" width="16" height="14" rx="3" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+  <rect x="1586" y="13" width="3" height="6" rx="1" fill="#FFFFFF"/>
+
+  <!-- Venue rail -->
+  <rect x="0" y="32" width="232" height="968" fill="#160A11"/>
+  <path d="M28 66c17 0 24-7 24-24 0 17 7 24 24 24-17 0-24 7-24 24 0-17-7-24-24-24Z" fill="#F50A48"/>
+  <text x="88" y="72" class="ui white heavy" font-size="20">crays board</text>
+
+  <rect x="16" y="110" width="200" height="76" rx="16" fill="#241019" stroke="#3B1B28"/>
+  <rect x="28" y="124" width="48" height="48" rx="14" fill="#FF7668"/>
+  <text x="52" y="153" class="ui heavy" font-size="14" text-anchor="middle">MC</text>
+  <text x="88" y="143" class="ui white bold" font-size="14">Maison Crays</text>
+  <text x="88" y="164" class="ui rail small">Open for service</text>
+  <path d="M196 143l5 5 5-5" class="stroke" stroke="#CDAFBB"/>
+
+  <!-- Selected navigation -->
+  <rect x="12" y="212" width="208" height="52" rx="14" fill="#3B1B28"/>
+  <rect x="12" y="222" width="4" height="32" rx="2" fill="#F50A48"/>
+  <path d="M34 239l10-9 10 9v11H47v-7h-6v7h-7Z" class="stroke" stroke="#F50A48"/>
+  <text x="70" y="244" class="ui white body bold">Home</text>
+
+  <g class="ui rail body">
+    <path d="M34 296h20v18H34zM38 291h12v5" class="stroke" stroke="#CDAFBB"/>
+    <text x="70" y="308">Orders</text>
+    <rect x="182" y="286" width="26" height="26" rx="13" fill="#C9063A"/>
+    <text x="195" y="304" class="ui white tiny heavy" text-anchor="middle">3</text>
+
+    <path d="M34 350h20M38 344v22M44 344v22M50 344v22" class="stroke" stroke="#CDAFBB"/>
+    <text x="70" y="360">Menu</text>
+
+    <rect x="34" y="395" width="20" height="19" rx="3" class="stroke" stroke="#CDAFBB"/>
+    <path d="M39 390v7M49 390v7M38 403h12" class="stroke" stroke="#CDAFBB"/>
+    <text x="70" y="409">Events</text>
+
+    <circle cx="40" cy="452" r="6" class="stroke" stroke="#CDAFBB"/>
+    <circle cx="51" cy="454" r="5" class="stroke" stroke="#CDAFBB"/>
+    <path d="M30 467c2-8 18-8 20 0M47 467c2-6 12-6 15 0" class="stroke" stroke="#CDAFBB"/>
+    <text x="70" y="462">People</text>
+
+    <path d="M33 503h22v18H33zM39 503v18M49 503v18" class="stroke" stroke="#CDAFBB"/>
+    <text x="70" y="516">Invites</text>
+
+    <circle cx="44" cy="562" r="10" class="stroke" stroke="#CDAFBB"/>
+    <circle cx="44" cy="562" r="3" class="stroke" stroke="#CDAFBB"/>
+    <text x="70" y="568">Settings</text>
+  </g>
+
+  <rect x="16" y="914" width="200" height="62" rx="15" fill="#241019"/>
+  <circle cx="46" cy="945" r="18" fill="#FFE3EA"/>
+  <text x="46" y="950" class="ui heavy" fill="#C9063A" font-size="11" text-anchor="middle">MI</text>
+  <text x="76" y="940" class="ui white small bold">Mina</text>
+  <text x="76" y="959" class="ui rail tiny">Service lead</text>
+  <circle cx="196" cy="945" r="3" fill="#167A58"/>
+
+  <!-- Context bar -->
+  <rect x="232" y="32" width="1368" height="72" fill="#FFF7F8"/>
+  <line x1="232" y1="103.5" x2="1600" y2="103.5" stroke="#EEDCE2"/>
+  <circle cx="270" cy="68" r="5" fill="#167A58"/>
+  <text x="286" y="73" class="ui small bold">Live</text>
+  <text x="322" y="73" class="ui muted small">· synced just now</text>
+  <text x="1290" y="63" class="ui small bold" text-anchor="end">Dinner service</text>
+  <text x="1290" y="82" class="ui muted tiny" text-anchor="end">Maison Crays</text>
+  <circle cx="1332" cy="68" r="21" fill="#FFE3EA"/>
+  <text x="1332" y="73" class="ui heavy" fill="#C9063A" font-size="11" text-anchor="middle">MI</text>
+  <rect x="1374" y="46" width="116" height="44" rx="13" fill="#FFFFFF" stroke="#D9BEC8"/>
+  <text x="1432" y="73" class="ui label" text-anchor="middle">Switch venue</text>
+  <circle cx="1534" cy="68" r="22" fill="#FFF0F2"/>
+  <path d="M1534 56v24M1522 68h24" class="stroke" stroke="#F50A48"/>
+
+  <!-- Main content -->
+  <text x="274" y="158" class="ui heavy" font-size="34" letter-spacing="-0.7">Good evening, Mina</text>
+  <text x="274" y="188" class="ui muted body">The room is live. Start with the three orders waiting on you.</text>
+
+  <!-- Continuous service strip -->
+  <rect x="274" y="220" width="1284" height="96" rx="18" fill="#FFFFFF" stroke="#EEDCE2"/>
+  <rect x="274" y="220" width="384" height="96" rx="18" fill="#FFF0F2"/>
+  <circle cx="310" cy="268" r="20" fill="#FFE3EA"/>
+  <text x="310" y="275" class="ui heavy" fill="#C9063A" font-size="22" text-anchor="middle">!</text>
+  <text x="344" y="255" class="ui muted small bold">ORDERS</text>
+  <text x="344" y="280" class="ui heavy" font-size="21">3 need a decision</text>
+  <text x="344" y="300" class="ui muted small">Oldest wait 14 min</text>
+  <path d="M625 263l7 7-7 7" class="stroke" stroke="#A58D98"/>
+
+  <line x1="658" y1="240" x2="658" y2="296" stroke="#EEDCE2"/>
+  <text x="692" y="253" class="ui muted small bold">MENU</text>
+  <text x="692" y="279" class="ui heavy" font-size="19" fill="#9A5C00">1 unavailable</text>
+  <text x="692" y="299" class="ui muted small">86 items live</text>
+
+  <line x1="900" y1="240" x2="900" y2="296" stroke="#EEDCE2"/>
+  <text x="934" y="253" class="ui muted small bold">DOORS</text>
+  <text x="934" y="279" class="ui heavy" font-size="19">Open in 42 min</text>
+  <text x="934" y="299" class="ui muted small">Friday Supper Club</text>
+
+  <line x1="1192" y1="240" x2="1192" y2="296" stroke="#EEDCE2"/>
+  <text x="1226" y="253" class="ui muted small bold">MEMBERS</text>
+  <text x="1226" y="279" class="ui heavy" font-size="19">1 expiring soon</text>
+  <text x="1226" y="299" class="ui muted small">12 active</text>
+
+  <!-- Orders attention lane -->
+  <text x="274" y="364" class="ui heavy" font-size="22">Needs attention</text>
+  <text x="274" y="389" class="ui muted small">Oldest first · updates from confirmed venue truth</text>
+  <rect x="274" y="410" width="824" height="464" rx="18" fill="#FFFFFF" stroke="#EEDCE2" filter="url(#softShadow)"/>
+  <text x="300" y="446" class="ui muted tiny bold">ORDER</text>
+  <text x="500" y="446" class="ui muted tiny bold">GUEST</text>
+  <text x="780" y="446" class="ui muted tiny bold">WAIT</text>
+  <line x1="300" y1="462" x2="1072" y2="462" stroke="#EEDCE2"/>
+
+  <circle cx="322" cy="512" r="20" fill="#FFE3EA"/>
+  <text x="322" y="518" class="ui heavy" fill="#C9063A" font-size="13" text-anchor="middle">42</text>
+  <text x="356" y="504" class="ui heavy" font-size="17">Miso aubergine</text>
+  <text x="356" y="526" class="ui muted small">1 item · counter pickup</text>
+  <text x="500" y="514" class="ui body">Guest 5724…</text>
+  <text x="780" y="507" class="ui heavy" fill="#B4233D" font-size="18">14 min</text>
+  <text x="780" y="528" class="ui muted tiny">needs acceptance</text>
+  <rect x="922" y="486" width="144" height="48" rx="14" fill="#C9063A"/>
+  <text x="994" y="516" class="ui white label" text-anchor="middle">Accept order</text>
+  <line x1="300" y1="558" x2="1072" y2="558" stroke="#EEDCE2"/>
+
+  <circle cx="322" cy="608" r="20" fill="#FFE3EA"/>
+  <text x="322" y="614" class="ui heavy" fill="#C9063A" font-size="13" text-anchor="middle">45</text>
+  <text x="356" y="600" class="ui heavy" font-size="17">Beef brisket</text>
+  <text x="356" y="622" class="ui muted small">2 items · table 8</text>
+  <text x="500" y="610" class="ui body">Guest 8f14…</text>
+  <text x="780" y="603" class="ui heavy" fill="#9A5C00" font-size="18">8 min</text>
+  <text x="780" y="624" class="ui muted tiny">needs acceptance</text>
+  <rect x="922" y="582" width="144" height="48" rx="14" fill="#C9063A"/>
+  <text x="994" y="612" class="ui white label" text-anchor="middle">Accept order</text>
+  <line x1="300" y1="654" x2="1072" y2="654" stroke="#EEDCE2"/>
+
+  <circle cx="322" cy="704" r="20" fill="#E6EBFA"/>
+  <text x="322" y="710" class="ui heavy" fill="#3856A6" font-size="13" text-anchor="middle">46</text>
+  <text x="356" y="696" class="ui heavy" font-size="17">Truffle pasta</text>
+  <text x="356" y="718" class="ui muted small">1 item · bar pickup</text>
+  <text x="500" y="706" class="ui body">Guest a87f…</text>
+  <text x="780" y="699" class="ui heavy" font-size="18">4 min</text>
+  <text x="780" y="720" class="ui muted tiny">accepted</text>
+  <rect x="922" y="678" width="144" height="48" rx="14" fill="#E6EBFA"/>
+  <text x="994" y="708" class="ui label" fill="#3856A6" text-anchor="middle">Start preparing</text>
+  <line x1="300" y1="750" x2="1072" y2="750" stroke="#EEDCE2"/>
+
+  <rect x="300" y="780" width="188" height="52" rx="14" fill="#FFF7F8" stroke="#D9BEC8"/>
+  <text x="394" y="812" class="ui label" text-anchor="middle">View all orders</text>
+  <text x="1072" y="812" class="ui muted small" text-anchor="end">3 open · 0 preparing · 0 ready</text>
+
+  <!-- Tonight / action rail -->
+  <text x="1126" y="364" class="ui heavy" font-size="22">Tonight</text>
+  <text x="1126" y="389" class="ui muted small">The next hand-off for the room</text>
+  <rect x="1126" y="410" width="432" height="260" rx="18" fill="#160A11"/>
+  <rect x="1148" y="432" width="88" height="28" rx="14" fill="#3B1B28"/>
+  <circle cx="1164" cy="446" r="4" fill="#FF7668"/>
+  <text x="1176" y="451" class="ui white tiny bold">IN 42 MIN</text>
+  <text x="1148" y="500" class="ui white heavy" font-size="24">Friday Supper Club</text>
+  <text x="1148" y="528" class="ui rail body">Doors 18:40 · Starts 19:00</text>
+  <text x="1148" y="558" class="ui rail small">12 expected · 1 checked in</text>
+  <rect x="1148" y="586" width="186" height="52" rx="14" fill="#C9063A"/>
+  <text x="1241" y="618" class="ui white label" text-anchor="middle">Open check-in</text>
+  <rect x="1346" y="586" width="188" height="52" rx="14" fill="#241019" stroke="#3B1B28"/>
+  <text x="1440" y="618" class="ui white label" text-anchor="middle">View event</text>
+
+  <text x="1126" y="716" class="ui heavy" font-size="22">Keep moving</text>
+  <rect x="1126" y="738" width="432" height="136" rx="18" fill="#FFFFFF" stroke="#EEDCE2"/>
+  <rect x="1148" y="758" width="186" height="48" rx="14" fill="#FFF0F2"/>
+  <text x="1170" y="788" class="ui label" fill="#C9063A">＋ Add menu item</text>
+  <rect x="1348" y="758" width="188" height="48" rx="14" fill="#FFF0F2"/>
+  <text x="1370" y="788" class="ui label" fill="#C9063A">＋ Create event</text>
+  <text x="1148" y="846" class="ui small bold">Invite a host</text>
+  <text x="1290" y="846" class="ui small bold">Assign staff role</text>
+  <path d="M1260 840l6 6-6 6M1506 840l6 6-6 6" class="stroke" stroke="#A58D98"/>
+
+  <text x="274" y="930" class="ui faint small">Illustrative operational state · confirmed actions remain relay-acknowledged.</text>
+</svg>

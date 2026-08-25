@@ -5,10 +5,13 @@ import {
   assert,
   emulatorUrl,
   getRelay,
+  getRelaySecrets,
   listRelays,
   loadKeys,
   makePool,
   readState,
+  resolveCommunityBootstrap,
+  signEvent,
   sleep,
   writeState,
 } from './relay-lib.mjs';
@@ -69,8 +72,18 @@ assert(relay.status === 'running', 'app-provisioned relay reports running');
 assert(typeof relay.relay_url === 'string' && relay.relay_url.startsWith('ws'), 'relay exposes a ws relay_url');
 assert(typeof relay.base_url === 'string' && relay.base_url.startsWith('http'), 'relay exposes an http service base_url');
 
-// Venue profile on the NEW relay: exactly one 30078 with the exact contract.
+// NIP-97 trust bootstrap and venue profile on the NEW relay.
 const pool = makePool();
+const secrets = await getRelaySecrets(relay.id, keys);
+const issuerSecret = secrets.badge_issuer_secret_key;
+assert(/^[0-9a-f]{64}$/i.test(issuerSecret || ''), 'new relay exposes its badge issuer secret to the coordinator admin');
+const issuerPubkey = signEvent({ kind: 1 }, issuerSecret).pubkey;
+const community = await resolveCommunityBootstrap({
+  pool,
+  relayUrl: relay.relay_url,
+  expectedAdmins: [state.admin_pubkey],
+  expectedIssuerPubkey: issuerPubkey,
+});
 const profiles = await pool.querySync([relay.relay_url], { kinds: [30078], '#d': ['nuts-community-profile'], limit: 10 });
 pool.close([relay.relay_url]);
 assert(profiles.length === 1, `exactly one venue profile 30078/nuts-community-profile on the new relay (${profiles.length} found)`);
@@ -92,6 +105,10 @@ writeState({
   domain: relay.domain,
   relay_url: relay.relay_url,
   base_url: relay.base_url,
+  issuer_pubkey: issuerPubkey,
+  community_root_pubkey: community.rootPubkey,
+  community_anchor_id: community.anchor.id,
+  required_badge_address: community.requiredBadgeAddress,
   venue_profile_id: profile.id,
   phase: 'verified',
 });

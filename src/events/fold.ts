@@ -1,10 +1,12 @@
+import { definitionAuthorTrusted, type CommunityTrust } from "@/access/trust";
+
 import { calendarEventAddress, type RsvpStatus } from "./protocol";
 
 /**
- * Pure calendar/RSVP projection fold per PRD §8.6 and EVENT-08. Everything
- * here is synchronous and fully unit-testable; the subscription coordinator
- * in useEvents.ts only extracts plain inputs from worker events and calls
- * this.
+ * Pure calendar/RSVP projection fold per PRD §8.6 and EVENT-08, on NIP-97
+ * trust (spec of record: ~/nips/97.md). Everything here is synchronous and
+ * fully unit-testable; the subscription coordinator in useEvents.ts only
+ * extracts plain inputs from worker events and calls this.
  */
 
 export type CalendarEventInput = {
@@ -68,14 +70,16 @@ function isNewer(id: string, createdAt: number, current: { id: string; createdAt
 /**
  * Projects the Board's event list.
  *
- * - Only events from trusted venue authorities count (EVENT-08: untrusted
- *   events are never rendered as operational truth). Addressable events
- *   resolve as the latest per `31923:<author>:<d>`.
+ * - Only events from trusted definition authors count (EVENT-08 on NIP-97
+ *   trust: anchor admins plus the community root key; untrusted events are
+ *   never rendered as operational truth). Addressable events resolve as the
+ *   latest per `31923:<author>:<d>`.
  * - An event missing a `d`, a title, or a usable `start` is malformed and
  *   skipped rather than rendered half-broken.
  * - RSVPs are counted latest-per-attendee per event address (NIP-52: only
- *   the latest response per attendee/event counts). Duplicates, wrong-event
- *   `a` tags, and unknown statuses never move the totals.
+ *   the latest response per attendee/event counts). RSVPs are attendee-
+ *   published and deliberately NOT gated by anchor trust. Duplicates,
+ *   wrong-event `a` tags, and unknown statuses never move the totals.
  *
  * Venue binding is owned by the caller: only events learned from the active
  * venue relay reach this fold.
@@ -83,17 +87,17 @@ function isNewer(id: string, createdAt: number, current: { id: string; createdAt
 export function projectEvents({
   events,
   rsvps,
-  trustedIssuers,
+  trust,
   now,
 }: {
   events: CalendarEventInput[];
   rsvps: RsvpInput[];
-  trustedIssuers: ReadonlySet<string>;
+  trust: CommunityTrust;
   now: number;
 }): BoardEvent[] {
   const latestByAddress = new Map<string, CalendarEventInput>();
   for (const event of events) {
-    if (!trustedIssuers.has(event.pubkey)) continue;
+    if (!definitionAuthorTrusted(event.pubkey, trust)) continue;
     if (!event.identifier) continue;
     const address = calendarEventAddress(event.pubkey, event.identifier);
     const previous = latestByAddress.get(address);

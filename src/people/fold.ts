@@ -1,15 +1,29 @@
+import {
+  isNamedCapability,
+  permissionGrants,
+  permissionKind,
+  type Permission as Nip97Permission,
+} from "@/access/nip97";
+import {
+  awardIssuerValid,
+  definitionAuthorTrusted,
+  revocationSignerValid,
+  type CommunityTrust,
+} from "@/access/trust";
+
 /**
- * Pure people/roles projection fold per PRD §8.7 and venue-commerce-nip §3.6/§4.
- * Everything here is synchronous and fully unit-testable; the subscription
- * coordinator in usePeople.ts only extracts plain inputs from worker events
- * and calls this.
+ * Pure people/roles projection fold per PRD §8.7 and NIP-97 (spec of record
+ * ~/nips/97.md). Everything here is synchronous and fully unit-testable; the
+ * subscription coordinator in usePeople.ts only extracts plain inputs from
+ * worker events and calls this.
  *
- * There is no member table: a person appears because they are a root venue
- * admin (NIP-11) or hold a role/membership award whose definition exists on
- * the venue relay. Expired and revoked awards keep the person listed with an
- * Expired status (they grant nothing, but they are the only trace that the
- * person ever had access); untrusted, malformed, and unrelated awards never
- * create a person.
+ * There is no member table: a person appears because they are the community
+ * root key or an anchor admin, or hold a role/membership award whose
+ * definition exists on the venue relay and whose issuer satisfies the NIP-97
+ * issuance rules against the current anchor. Expired and revoked awards keep
+ * the person listed with an Expired status (they grant nothing, but they are
+ * the only trace that the person ever had access); untrusted, malformed, and
+ * unrelated awards never create a person.
  */
 
 export const PERMISSIONS = ["posts", "media", "events", "store", "invites", "moderation", "settings"] as const;
@@ -36,10 +50,37 @@ export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   settings: "Change roles, permissions, venue, and payment settings.",
 };
 
+/**
+ * The NIP-97 wire capability behind each matrix key (the nuts-cash
+ * PermissionKey ⇄ permission-tag mapping): kind-scoped write grants for
+ * on-relay features, named capabilities for off-relay ones.
+ */
+export const PERMISSION_CAPABILITIES: Record<Permission, Nip97Permission> = {
+  posts: { capability: "1", access: "write" },
+  media: { capability: "1063", access: "write" },
+  events: { capability: "31923", access: "write" },
+  store: { capability: "30402", access: "write" },
+  invites: { capability: "invites" },
+  moderation: { capability: "moderation" },
+  settings: { capability: "settings" },
+};
+
+/** Does a parsed NIP-97 permission grant matrix key `key`? */
+export function permissionMatchesKey(grant: Nip97Permission, key: Permission): boolean {
+  const kind = permissionKind(PERMISSION_CAPABILITIES[key]);
+  if (kind !== undefined) return permissionGrants(grant, kind, "write");
+  return isNamedCapability(grant) && grant.capability === key;
+}
+
+/** Maps parsed NIP-97 permission tags back to the matrix keys, canonical order. */
+export function permissionsFromNip97(permissions: Nip97Permission[]): Permission[] {
+  return PERMISSIONS.filter((key) => permissions.some((grant) => permissionMatchesKey(grant, key)));
+}
+
 /** PRD §8.7: Expiring soon when a relevant award ends within 30 days. */
 export const EXPIRING_SOON_SECONDS = 30 * 24 * 60 * 60;
 
-/** venue-commerce-nip §3.6: at most four configurable roles in v1. */
+/** PRD §8.7: at most four configurable roles in v1. */
 export const ROLE_LIMIT = 4;
 
 export type PersonStatus = "active" | "expiring" | "expired";
@@ -72,9 +113,13 @@ export type PeopleDefinitionInput = {
   id: string;
   createdAt: number;
   name?: string;
-  type?: string;
+  /** `t` topic classification; anything else never reaches the projections. */
+  type?: "role" | "membership";
   description?: string;
+  /** Matrix keys mapped back from the definition's NIP-97 permission tags. */
   permissions: Permission[];
+  /** Well-formed NIP-99 price tag present (drives the issuance rules). */
+  sellable: boolean;
 };
 
 export type RevocationInput = {
@@ -93,7 +138,7 @@ export type PersonAward = {
   kind: "role" | "membership";
   permissions: Permission[];
   expiresAt?: number;
-  /** A trusted kind 5 references this award; it grants nothing. */
+  /** A valid kind 5 references this award; it grants nothing. */
   revoked: boolean;
   /** Grants access right now: not revoked and not expired. */
   active: boolean;
@@ -102,7 +147,7 @@ export type PersonAward = {
 export type Person = {
   pubkey: string;
   displayName: string;
-  /** Root venue administrator (NIP-11 authority); cannot be revoked here. */
+  /** Community root key or anchor admin; cannot be revoked here. */
   isRootAdmin: boolean;
   status: PersonStatus;
   /** Nearest expiry among active awards, when any has an expiration. */
@@ -119,7 +164,7 @@ export type RoleSummary = {
   name: string;
   description: string;
   permissions: Permission[];
-  /** §3.1 update rule: only the original publishing key may edit in place. */
+  /** NIP-97 update rule: only the original publishing key may edit in place. */
   editable: boolean;
 };
 
@@ -127,7 +172,18 @@ export function isPermission(value: string): value is Permission {
   return (PERMISSIONS as readonly string[]).includes(value);
 }
 
-/** Latest addressable definition per address (§3.1: created_at, ties by id). */
+/**
+ * Definition trust gate (NIP-97): role authoring is reserved to anchor admins
+ * (the privilege-escalation boundary); membership definitions additionally
+ * trust the root key, which authors the node's `members` invite definition.
+ */
+export function definitionTrusted(definition: PeopleDefinitionInput, trust: CommunityTrust): boolean {
+  if (definition.type === "role") return trust.admins.has(definition.authorPubkey);
+  if (definition.type === "membership") return definitionAuthorTrusted(definition.authorPubkey, trust);
+  return false;
+}
+
+/** Latest addressable definition per address (created_at, ties by id). */
 export function latestDefinitions(definitions: PeopleDefinitionInput[]): Map<string, PeopleDefinitionInput> {
   const latest = new Map<string, PeopleDefinitionInput>();
   for (const definition of definitions) {
@@ -157,10 +213,8 @@ export type PeopleProjectionInput = {
   definitions: PeopleDefinitionInput[];
   revocations: RevocationInput[];
   profiles: ProfileInput[];
-  /** NIP-11 venue authorities: the root admins (venue-commerce-nip §1). */
-  authorities: ReadonlySet<string>;
-  /** Venue authorities + advertised badge issuer; award/revocation trust. */
-  trustedIssuers: ReadonlySet<string>;
+  /** NIP-97 trust resolved from the root-signed community anchor. */
+  trust: CommunityTrust;
   now: number;
 };
 
@@ -174,25 +228,31 @@ export function projectPeople({
   definitions,
   revocations,
   profiles,
-  authorities,
-  trustedIssuers,
+  trust,
   now,
 }: PeopleProjectionInput): Person[] {
-  const definitionByAddress = latestDefinitions(definitions);
+  const definitionByAddress = latestDefinitions(
+    definitions.filter((definition) => definitionTrusted(definition, trust)),
+  );
   const profileByPubkey = latestProfiles(profiles);
+  const awardById = new Map(awards.map((award) => [award.id, award]));
 
+  // A revocation counts only from the award's own issuer or an anchor admin.
   const revokedIds = new Set<string>();
   for (const revocation of revocations) {
-    if (!trustedIssuers.has(revocation.authorPubkey)) continue;
-    for (const awardId of revocation.awardIds) revokedIds.add(awardId);
+    for (const awardId of revocation.awardIds) {
+      const target = awardById.get(awardId);
+      if (target && revocationSignerValid(revocation.authorPubkey, target.issuerPubkey, trust)) {
+        revokedIds.add(awardId);
+      }
+    }
   }
 
   const awardsByHolder = new Map<string, PersonAward[]>();
   for (const award of awards) {
-    if (!trustedIssuers.has(award.issuerPubkey)) continue;
     const definition = definitionByAddress.get(award.definitionAddress);
     if (!definition) continue; // definition must exist on the venue relay
-    if (definition.type !== "role" && definition.type !== "membership") continue;
+    if (!awardIssuerValid({ issuer: award.issuerPubkey, sellable: definition.sellable, trust })) continue;
 
     const revoked = revokedIds.has(award.id);
     const expired = award.expiresAt !== undefined && award.expiresAt <= now;
@@ -200,7 +260,7 @@ export function projectPeople({
       id: award.id,
       definitionAddress: award.definitionAddress,
       ...(definition.name ? { name: definition.name } : {}),
-      kind: definition.type,
+      kind: definition.type as "role" | "membership",
       permissions: definition.permissions,
       ...(award.expiresAt !== undefined ? { expiresAt: award.expiresAt } : {}),
       revoked,
@@ -211,6 +271,8 @@ export function projectPeople({
     awardsByHolder.set(award.holderPubkey, list);
   }
 
+  // The community root key and every anchor admin are always listed Active.
+  const authorities = new Set<string>([trust.rootPubkey, ...trust.admins]);
   const pubkeys = new Set<string>([...authorities, ...awardsByHolder.keys()]);
   const people: Person[] = [];
   for (const pubkey of pubkeys) {
@@ -218,7 +280,7 @@ export function projectPeople({
     const personAwards = awardsByHolder.get(pubkey) ?? [];
     const activeAwards = personAwards.filter((award) => award.active);
 
-    // Root venue administrators are always Active (PRD §8.7, PEOPLE-05).
+    // Root key and anchor admins are always Active (PRD §8.7, PEOPLE-05).
     let status: PersonStatus;
     let nearestExpiry: number | undefined;
     if (isRootAdmin || activeAwards.length > 0) {
@@ -262,19 +324,20 @@ export function projectPeople({
 
 export type RolesProjectionInput = {
   definitions: PeopleDefinitionInput[];
-  /** Role definitions count only from trusted authorities (§3.1). */
-  trustedIssuers: ReadonlySet<string>;
+  /** NIP-97 trust; role definitions count only from anchor admins. */
+  trust: CommunityTrust;
   /** Active staff pubkey; decides in-place editability. */
   activePubkey?: string;
 };
 
-/** Projects the Roles & access list (venue-commerce-nip §3.6, ROLE-01). */
-export function projectRoles({ definitions, trustedIssuers, activePubkey }: RolesProjectionInput): RoleSummary[] {
-  const definitionByAddress = latestDefinitions(definitions);
+/** Projects the Roles & access list (PRD §8.7, ROLE-01). */
+export function projectRoles({ definitions, trust, activePubkey }: RolesProjectionInput): RoleSummary[] {
+  const definitionByAddress = latestDefinitions(
+    definitions.filter((definition) => definitionTrusted(definition, trust)),
+  );
   const roles: RoleSummary[] = [];
   for (const definition of definitionByAddress.values()) {
     if (definition.type !== "role") continue;
-    if (!trustedIssuers.has(definition.authorPubkey)) continue;
     roles.push({
       address: definition.address,
       d: definition.d,

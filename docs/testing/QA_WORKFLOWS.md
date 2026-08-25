@@ -4,7 +4,7 @@
 
 This document says what the product must prove in language a product owner, designer, developer, or tester can review before automation exists. It covers the complete screen catalog in [`design/mockups/README.md`](../../design/mockups/README.md), the behavior in [`PRD.md`](../../PRD.md), and the important states that are not visible in the polished mockups.
 
-It is both a release checklist and the source for future screen contracts, Jest tests, Maestro flows, and `.qa` verifiers. A mockup screenshot is not a passing test by itself.
+It is both a release checklist and the source for future screen contracts, Jest tests, Agent Device `.ad` flows, and `.qa` verifiers. A mockup screenshot is not a passing test by itself.
 
 ## How to write and automate a scenario
 
@@ -221,9 +221,13 @@ With no accepted relay acknowledgement, the card never shows confirmed success o
 
 Cancellation is secondary and, once accepted, requires confirmation naming the order and venue. Confirm publishes one trusted terminal status; dismiss publishes nothing. Cancellation from a terminal order or without permission is impossible.
 
-### ORDER-08 — Authority and legacy reads
+### ORDER-08 — Authority and current-status resolution
 
-Latest valid statuses from allowed venue/admin/badge/staff authorities count. Forged or unauthorized statuses do not. Legacy `27237` can be projected during migration, but every Board write is `37237`.
+Latest valid `37237` statuses from allowed community admins, the delegated
+badge issuer, or role holders with the required kind-scoped permission count.
+Resolution is by context, then `created_at`, then lowest event id. Forged,
+unauthorized, malformed-context, and legacy status events do not count; Board
+neither reads nor writes kind `27237`.
 
 ### ORDER-09 — Missing and changed definitions
 
@@ -253,7 +257,10 @@ Food and drink appear in ordered hospitality sections; merchandise, passes, and 
 
 ### MENU-02 — Create an item
 
-Given store permission, a valid name, description, price/currency, product kind, section, availability, and optional sats/image data publishes one correctly classified `30009` definition. The confirmed item appears in Board and is independently queryable.
+Given store permission, a valid title, summary, `price` tuple, product kind,
+section, availability, and optional sats/image data publishes one correctly
+classified kind `30402` NIP-99 listing. The confirmed item appears in Board and
+is independently queryable.
 
 ### MENU-03 — Validation
 
@@ -311,7 +318,12 @@ Selecting roles/memberships produces the exact repeated required-badge addresses
 
 ### EVENT-06 — Paid-event atomicity
 
-Paid entry first publishes and confirms one single-use expiring `event_access` definition, then publishes the event referencing it. If the definition fails, no visible paid event is published. If the event fails afterward, retry reuses/reconciles the intended access definition rather than multiplying tickets.
+Paid entry first publishes and confirms one single-use expiring kind `30402`
+ticket listing whose `a` tag is the stable event coordinate, then publishes the
+event. The event does not carry a back-reference to the ticket. If the
+definition fails, no visible paid event is published. If the event fails
+afterward, retry reuses/reconciles the intended access definition rather than
+multiplying tickets.
 
 ### EVENT-07 — Optional sats prerequisite
 
@@ -369,7 +381,10 @@ At compact width, the People master-detail splits into list and detail routes pr
 
 ### ROLE-01 — Create and edit a role
 
-An owner/settings user can create a valid role definition with exact `type=role`, `t=role`, name, description, and selected repeated permissions. Editing retains the addressable identity and confirmed latest definition.
+An owner/settings user can create a valid kind `30009` role definition with
+exact `t=role`, name, description, and selected repeated `permission` tags.
+Editing retains the addressable identity and confirmed latest definition; no
+legacy `type` tag is written.
 
 ### ROLE-02 — Permission matrix semantics
 
@@ -507,7 +522,13 @@ Each live result family has a stable distinct subscription ID. Leaving a screen,
 
 ### QUALITY-08 — Security and redaction
 
-Inspect application logs, Android logcat, crash reports, analytics payloads, route state, screenshots, clipboard behavior, and QA state. They contain no private keys, raw invite tokens, NIP-98 secret bodies, payment URLs/credentials, or presentation payloads. Irreversible actions always identify the affected venue.
+Inspect application logs, Android logcat, crash reports, analytics payloads,
+route state, screenshots, clipboard behavior, and QA state. They contain no
+private keys, NIP-98 secret bodies, payment URLs/credentials, or production
+Cashu proofs. Scoped mode-`0600` QA state may carry an opaque invite fixture or
+short-lived synthetic presentation only when the public UI flow requires it;
+those values never enter logs/artifacts and teardown removes them. Irreversible
+actions always identify the affected venue.
 
 ### QUALITY-09 — Performance under operational load
 
@@ -523,7 +544,7 @@ Before pilot, run the equivalent core workflows on the chosen iPad model, includ
 
 ### QUALITY-12 — Cleanup proof
 
-Force failure during bootstrap, Maestro, and verification. In every case the runner deletes only recorded relays, volumes, helpers, app package state, and scenario file. Screenshots/redacted logs remain diagnosable. Another simultaneously owned test resource remains untouched.
+Force failure during bootstrap, Agent Device replay, and verification. In every case the runner deletes only recorded relays, volumes, helpers, app package state, and scenario file. Screenshots/redacted logs remain diagnosable. Another simultaneously owned test resource remains untouched.
 
 ## Release suites
 
@@ -537,7 +558,7 @@ Force failure during bootstrap, Maestro, and verification. In every case the run
 
 ### Android tablet regression
 
-- complete named Maestro/`.qa` suite in 11-inch 16:10 landscape;
+- complete named Agent Device/`.qa` suite in 11-inch 16:10 landscape;
 - primary navigation/forms/scanner lifecycle in portrait;
 - screenshot artifacts at stable decision points;
 - resource-leak and teardown checks.
@@ -572,4 +593,3 @@ Do not automate all screens at once. Build confidence in this order:
 9. Full phone, portrait, lifecycle, accessibility, and physical-device release suites.
 
 This sequence tests the harness itself on the central hospitality loop before multiplying fixture families.
-

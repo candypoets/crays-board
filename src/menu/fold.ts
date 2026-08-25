@@ -1,8 +1,11 @@
+import { CALENDAR_KINDS, LISTING_KIND, definitionAddress } from "@/access/nip97";
+import { definitionAuthorTrusted, type CommunityTrust } from "@/access/trust";
+
 /**
- * Pure menu catalog projection per venue-commerce-nip §3 and PRD §8.5.
- * Everything here is synchronous and fully unit-testable; the subscription
- * coordinator in useMenu.ts only extracts plain inputs from worker events and
- * calls this fold.
+ * Pure menu catalog projection per NIP-97 (spec of record ~/nips/97.md) on
+ * the NIP-99 kind 30402 listing grammar. Everything here is synchronous and
+ * fully unit-testable; the subscription coordinator in useMenu.ts only
+ * extracts plain inputs from worker events and calls this fold.
  */
 
 export type MenuAvailability = "available" | "unavailable" | "archived";
@@ -18,30 +21,41 @@ export type MenuDefinitionInput = {
   /** Publishing key, lowercased — the only key allowed to edit this item. */
   author: string;
   d: string;
-  type?: string;
-  name?: string;
+  /**
+   * The NIP-99 price tag, validated by parsePriceTag at the worker boundary;
+   * `amount` keeps the raw tag string for display. A listing without a
+   * well-formed price is not sellable (NIP-97) and never appears.
+   */
+  price?: { amount: string; currency: string };
+  title?: string;
+  /** NIP-99 display text; readers accept `summary`, falling back to `description`. */
+  summary?: string;
   description?: string;
-  price?: string;
-  currency?: string;
+  /** Product class from the `product_kind` tag; absent defaults to "generic". */
+  productKind?: string;
   availability?: string;
   section?: string;
   position?: number;
-  sellable: boolean;
-  maxUses?: number;
+  /**
+   * Raw `a` tag value. A listing linked to a 31922/31923 calendar address is
+   * a ticket and stays with its event — it is not a menu item.
+   */
+  a?: string;
   createdAt: number;
 };
 
 export type MenuItem = {
-  /** `30009:<author>:<d>` addressable identity. */
+  /** `30402:<author>:<d>` addressable identity. */
   address: string;
   id: string;
   d: string;
   author: string;
+  /** Product class: food, drink, merchandise, or generic. */
   type: string;
   name: string;
   description?: string;
-  price?: string;
-  currency?: string;
+  price: string;
+  currency: string;
   availability: MenuAvailability;
   section?: string;
   position?: number;
@@ -55,15 +69,15 @@ export type MenuSection = {
 
 export type MenuProjectionInput = {
   definitions: MenuDefinitionInput[];
-  /** Venue authorities + advertised badge issuer (see venue/trust.ts). */
-  trustedAuthors: ReadonlySet<string>;
+  /** NIP-97 trust for the venue relay: anchor admins plus the root key. */
+  trust: CommunityTrust;
 };
 
 function addressOf(input: MenuDefinitionInput): string {
-  return `30009:${input.author}:${input.d}`;
+  return definitionAddress(LISTING_KIND, input.author, input.d);
 }
 
-/** Addressable rule (§3.1): latest by created_at; ties break by higher id. */
+/** Addressable rule: latest by created_at; ties break by higher id. */
 function latestDefinitions(definitions: MenuDefinitionInput[]): Map<string, MenuDefinitionInput> {
   const latest = new Map<string, MenuDefinitionInput>();
   for (const definition of definitions) {
@@ -81,31 +95,35 @@ function latestDefinitions(definitions: MenuDefinitionInput[]): Map<string, Menu
 }
 
 /**
- * Projects the section-first sellable catalog. Untrusted authors, non-sellable
- * definitions, non-product classes (roles, memberships, event access), and
- * malformed definitions never appear. Definitions from other trusted keys DO
- * appear — ownership only controls editability (MENU-05), decided by the
- * caller comparing `item.author` with the active staff pubkey.
+ * Projects the section-first sellable catalog. Untrusted authors, listings
+ * without a well-formed price (the NIP-97 sellability rule), tickets linked
+ * to a calendar event, unknown product kinds, and malformed listings never
+ * appear. Definitions from other trusted keys DO appear — ownership only
+ * controls editability (MENU-05), decided by the caller comparing
+ * `item.author` with the active staff pubkey.
  *
  * Venue binding is owned by the caller: only events learned from the active
  * venue relay reach this fold.
  */
-export function projectMenu({ definitions, trustedAuthors }: MenuProjectionInput): MenuSection[] {
+export function projectMenu({ definitions, trust }: MenuProjectionInput): MenuSection[] {
   const latest = latestDefinitions(definitions);
   const bySection = new Map<string, MenuItem[]>();
 
   for (const definition of latest.values()) {
-    if (!trustedAuthors.has(definition.author)) continue;
-    if (!definition.sellable) continue;
-    const type = definition.type ?? "";
+    if (!definitionAuthorTrusted(definition.author, trust)) continue;
+    const linkedKind = definition.a ? Number(definition.a.split(":")[0]) : undefined;
+    if (linkedKind !== undefined && (CALENDAR_KINDS as readonly number[]).includes(linkedKind)) continue;
+    if (!definition.price) continue;
+    const type = definition.productKind ?? "generic";
     if (!PRODUCT_TYPES.has(type)) continue;
-    const name = definition.name?.trim() ?? "";
+    const name = definition.title?.trim() ?? "";
     if (name.length < 2) continue;
 
     const availability = AVAILABILITY.has(definition.availability ?? "")
       ? (definition.availability as MenuAvailability)
       : "available";
     const sectionName = definition.section?.trim() ?? "";
+    const description = definition.summary ?? definition.description ?? "";
     const item: MenuItem = {
       address: addressOf(definition),
       id: definition.id,
@@ -113,9 +131,9 @@ export function projectMenu({ definitions, trustedAuthors }: MenuProjectionInput
       author: definition.author,
       type,
       name,
-      ...(definition.description ? { description: definition.description } : {}),
-      ...(definition.price ? { price: definition.price } : {}),
-      ...(definition.currency ? { currency: definition.currency } : {}),
+      ...(description ? { description } : {}),
+      price: definition.price.amount,
+      currency: definition.price.currency,
       availability,
       ...(sectionName ? { section: sectionName } : {}),
       ...(definition.position !== undefined ? { position: definition.position } : {}),
@@ -130,7 +148,7 @@ export function projectMenu({ definitions, trustedAuthors }: MenuProjectionInput
   const sections: MenuSection[] = [...bySection.entries()].map(([name, items]) => ({
     name,
     items: items.sort(
-      // §3.2: deterministic position, ties break by d.
+      // Deterministic position, ties break by d.
       (a, b) => (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || a.d.localeCompare(b.d),
     ),
   }));

@@ -40,7 +40,7 @@ describe("buildRevocation", () => {
 });
 
 describe("buildRoleDefinition", () => {
-  it("produces the exact §3.6 tag set with repeated permission tags", () => {
+  it("produces the exact NIP-97 tag set with permission tags", () => {
     const template = buildRoleDefinition({
       d: "qa-role",
       name: "Events host",
@@ -51,11 +51,10 @@ describe("buildRoleDefinition", () => {
     expect(template.content).toBe("");
     expect(template.tags).toEqual([
       ["d", "qa-role"],
-      ["type", "role"],
       ["t", "role"],
       ["name", "Events host"],
       ["description", "Welcomes guests and handles entry."],
-      ["permission", "events"],
+      ["permission", "31923", "write"],
       ["permission", "invites"],
     ]);
   });
@@ -69,11 +68,27 @@ describe("buildRoleDefinition", () => {
     });
     expect(template.tags).toEqual([
       ["d", "qa-role"],
-      ["type", "role"],
       ["t", "role"],
       ["name", "Owner"],
-      ["permission", "posts"],
-      ["permission", "store"],
+      ["permission", "1", "write"],
+      ["permission", "30402", "write"],
+      ["permission", "settings"],
+    ]);
+  });
+
+  it("maps the full matrix to the NIP-97 capability grammar", () => {
+    const template = buildRoleDefinition({
+      d: "qa-role",
+      name: "Full access",
+      permissions: ["posts", "media", "events", "store", "invites", "moderation", "settings"],
+    });
+    expect(template.tags.filter((tag) => tag[0] === "permission")).toEqual([
+      ["permission", "1", "write"],
+      ["permission", "1063", "write"],
+      ["permission", "31923", "write"],
+      ["permission", "30402", "write"],
+      ["permission", "invites"],
+      ["permission", "moderation"],
       ["permission", "settings"],
     ]);
   });
@@ -88,12 +103,14 @@ describe("buildRoleDefinition", () => {
 });
 
 describe("buildRoleAssignment", () => {
-  it("produces the exact §4 a/p tags for a permanent assignment", () => {
+  it("produces the exact NIP-97 a/p tags and query hints for a permanent assignment", () => {
     const template = buildRoleAssignment({ roleAddress: ROLE_ADDRESS, holderPubkey: HOLDER.toUpperCase() });
     expect(template.kind).toBe(8);
     expect(template.tags).toEqual([
       ["a", ROLE_ADDRESS],
       ["p", HOLDER],
+      ["t", "30009"],
+      ["t", "role"],
     ]);
   });
 
@@ -104,7 +121,13 @@ describe("buildRoleAssignment", () => {
       expiresAt: NOW + 3600,
       now: NOW,
     });
-    expect(template.tags).toContainEqual(["expiration", String(NOW + 3600)]);
+    expect(template.tags).toEqual([
+      ["a", ROLE_ADDRESS],
+      ["p", HOLDER],
+      ["expiration", String(NOW + 3600)],
+      ["t", "30009"],
+      ["t", "role"],
+    ]);
   });
 
   it("rejects bad address, bad key, and past expiry (ROLE-03)", () => {

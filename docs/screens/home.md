@@ -12,7 +12,15 @@ Staff identity (QA admin key) with venue authority on an isolated venue relay pr
 
 ## Starting truth
 
-- Isolated relay `craysboardqa-venue-<run>` with: venue hospitality profile `30078` (`d=nuts-community-profile`, named, admin-signed); sellable product definition `30009` (`d=qa-item-<run>`, available, admin-signed); a second product definition (`d=qa-item-unavailable-<run>`, `availability=unavailable`, admin-signed); three kind `8` awards of the available product to three fixture users, signed by the relay's badge issuer (implicit-pending orders); one kind `37237` `accepted`/`context=order` status on the third award (admin-signed); one NIP-52 kind `31923` timed event starting after the run (`d=qa-event-<run>`, admin-signed); one sellable membership definition (`d=qa-membership-<run>`, admin-signed); one kind `8` membership award to a fixture user with `expiration = run + 10 days` (issuer-signed).
+- Isolated relay `craysboardqa-venue-<run>` with its NIP-11 root and
+  root-signed `31727` community anchor; venue hospitality profile `30078`;
+  one available and one unavailable kind `30402` product listing; three kind
+  `8` awards of the available product signed by the delegated badge issuer
+  (implicit-pending orders); one admin-signed `37237` accepted status with
+  `order=<awardId>` and `d=order:<awardId>` on the third award; one upcoming
+  NIP-52 kind `31923`; one sellable kind `30009` membership definition
+  (`t=membership`); and one issuer-signed membership award expiring in ten
+  days.
 - App installed, state cleared, Metro on 8090, one Android device.
 
 ## User action
@@ -32,7 +40,12 @@ Open the seed deep link, wait for the Orders screen, navigate to Home through th
 
 ## Authoritative result
 
-- An independent relay query (kinds 8, 30009, 37237, 31923, 5, 30078) plus the venue's NIP-11 document and `/community/info` badge issuer reproduces the exact same projection: 2 pending + 1 accepted open orders, 1 unavailable sellable product, the seeded `31923` as the next event, 1 active member expiring within 30 days, no checklist.
+- An independent relay query (kinds `5`, `8`, `30009`, `30402`, `31727`,
+  `30078`, `31923`, and `37237`) plus the venue's NIP-11 document reproduces
+  the root-signed community anchor, delegated badge issuer, and exact same
+  projection: 2 pending + 1 accepted open orders, 1 unavailable sellable
+  product, the seeded `31923` as the next event, 1 active member expiring
+  within 30 days, and no checklist.
 - Logcat `[crays-board-home]` carries one JSON payload whose `orders`, `unavailableMenu`, `nextEvent.id`, `members`, and `checklist` fields exactly match that independent projection; `oldestWaitSeconds` matches the oldest open award's age within tolerance; `venueName` matches the relay profile.
 - The projection comes from one stable subscription `board_home_<sanitized relay>` (EOSE-as-loaded, unsubscribe on unmount/background), so the values are relay truth, not local memory.
 

@@ -6,7 +6,7 @@ import { assert, makePool, readState } from './relay-lib.mjs';
 const state = readState();
 if (!state?.relay_url || !state?.award_id) throw new Error('run .qa/relay-bootstrap.mjs first');
 
-// Independent relay truth per venue-commerce-nip §11: exactly one accepted
+// Independent relay truth per NIP-97: exactly one accepted
 // status for the seeded order context, exact tags, staff signer, monotonic.
 const pool = makePool();
 const statuses = await pool.querySync([state.relay_url], {
@@ -19,10 +19,8 @@ assert(statuses.length === 1, `exactly one 37237 status references the award (${
 const status = statuses[0];
 const tag = (name) => status.tags.find((entry) => entry[0] === name)?.[1];
 assert(tag('status') === 'accepted', 'status value is accepted');
-assert(tag('context') === 'order', 'status context is order');
-// §6.7 (resolved): d is stage-scoped so the addressable-range relay retains
-// every transition; e remains the stable order context.
-assert(tag('d') === `${state.award_id}:accepted`, 'd tag is the stage-scoped order context');
+assert(tag('order') === state.award_id, 'order tag uses the award-id fallback order reference');
+assert(tag('d') === `order:${state.award_id}`, 'd tag matches the NIP-97 order context');
 assert(tag('e') === state.award_id, 'e tag references the exact award event id');
 assert(tag('a') === state.product_address, 'a tag references the exact product address');
 assert(tag('p') === state.user_pubkey, 'p tag is the fixture order holder');

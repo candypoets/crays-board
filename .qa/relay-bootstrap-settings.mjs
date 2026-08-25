@@ -5,11 +5,11 @@
  * Fixtures, each signed by its proper authority and round-tripped until
  * queryable:
  *  a. venue hospitality profile 30078 / d=nuts-community-profile (admin);
- *  b. sellable product 30009 / d=qa-item-<run> (admin) + issuer-signed award
+ *  b. sellable product 30402 / d=qa-item-<run> (admin) + issuer-signed award
  *     (kept from the shared orders fixture family so relay-verify.mjs and the
  *     scenario runner env keep working);
- *  c. monthly membership 30009 / d=qa-membership-<run>, type=membership,
- *     t=membership, t=sellable, period=monthly, availability=available (admin);
+ *  c. monthly membership 30009 / d=qa-membership-<run>, t=membership,
+ *     recurring NIP-99 price, availability=available (admin);
  *  d. room manifest 30078 / d=life.crays/room/v1/qa-room-<run> with
  *     schema=life.crays/room/v1, operator=admin, capabilities, open=open, a
  *     future expiration, and award_issuer=<badge issuer> (admin).
@@ -32,13 +32,17 @@ import {
   assert,
   createRelay,
   emulatorUrl,
+  entitlementAwardTags,
   getRelaySecrets,
+  KIND_LISTING,
   loadKeys,
   makePool,
   nip98Header,
   nowSeconds,
+  productListingTags,
   publishUntilStored,
   requireCoordinator,
+  resolveCommunityBootstrap,
   signEvent,
   sleep,
   waitRelayRunning,
@@ -89,6 +93,17 @@ writeState({
 
 const pool = makePool();
 
+const secrets = await getRelaySecrets(created.id, keys);
+const issuerSecret = secrets.badge_issuer_secret_key;
+if (!/^[0-9a-f]{64}$/i.test(issuerSecret || '')) throw new Error('relay did not expose a badge issuer secret');
+const issuerPubkey = signEvent({ kind: 1 }, issuerSecret).pubkey;
+const community = await resolveCommunityBootstrap({
+  pool,
+  relayUrl: relay.relay_url,
+  expectedAdmins: [keys.admin.pub],
+  expectedIssuerPubkey: issuerPubkey,
+});
+
 // Invite service smoke, mirroring the shared bootstrap discipline (token in
 // state, never in logs).
 const inviteEndpoint = `${relay.base_url}/invites`;
@@ -134,49 +149,31 @@ await publish(venueProfile, 'venue hospitality profile (30078/nuts-community-pro
 // orders fixture family; untouched by the settings flow).
 const product = signEvent(
   {
-    kind: 30009,
-    tags: [
-      ['d', itemD],
-      ['type', 'food'],
-      ['t', 'food'],
-      ['t', 'sellable'],
-      ['name', `QA Miso aubergine ${run}`],
-      ['price', '9.50'],
-      ['currency', 'EUR'],
-      ['max_uses', '1'],
-      ['availability', 'available'],
-    ],
+    kind: KIND_LISTING,
+    tags: productListingTags({ d: itemD, title: `QA Miso aubergine ${run}`, price: '9.50' }),
   },
   keys.admin.priv,
 );
-await publish(product, 'sellable product definition (30009)');
-const productAddress = `30009:${keys.admin.pub}:${itemD}`;
+await publish(product, 'sellable product listing (30402)');
+const productAddress = `${KIND_LISTING}:${keys.admin.pub}:${itemD}`;
 
-const secrets = await getRelaySecrets(created.id, keys);
-const issuerSecret = secrets.badge_issuer_secret_key;
-if (!/^[0-9a-f]{64}$/i.test(issuerSecret || '')) throw new Error('relay did not expose a badge issuer secret');
-const issuerPubkey = signEvent({ kind: 1 }, issuerSecret).pubkey;
 const award = signEvent(
-  { kind: 8, tags: [['a', productAddress], ['p', holder.pub]] },
+  { kind: 8, tags: entitlementAwardTags({ definitionAddress: productAddress, holderPubkey: holder.pub }) },
   issuerSecret,
 );
 await publish(award, 'issuer-signed product award (implicit pending order)');
 
 // c. Monthly sellable membership definition, signed by the venue admin
-// authority (venue-commerce-nip §3.4).
+// authority (NIP-97 membership definition).
 const membership = signEvent(
   {
     kind: 30009,
     tags: [
       ['d', membershipD],
-      ['type', 'membership'],
       ['t', 'membership'],
-      ['t', 'sellable'],
       ['name', `QA Supporter ${run}`],
       ['description', 'Monthly support for the QA venue.'],
-      ['price', '12.00'],
-      ['currency', 'EUR'],
-      ['period', 'monthly'],
+      ['price', '12.00', 'EUR', 'month'],
       ['availability', 'available'],
     ],
   },
@@ -207,8 +204,8 @@ const roomManifest = signEvent(
 );
 await publish(roomManifest, 'signed room manifest (30078/life.crays/room/v1)');
 
-const stored = await pool.querySync([relay.relay_url], { kinds: [8, 30009, 30078], limit: 50 });
-assert(stored.length >= 5, `independent relay query sees the venue fixture family (${stored.length} events)`);
+const stored = await pool.querySync([relay.relay_url], { kinds: [8, 30009, 30402, 31727, 30078], limit: 50 });
+assert(stored.length >= 7, `independent relay query sees the NIP-97 venue fixture family (${stored.length} events)`);
 pool.close([relay.relay_url]);
 
 writeState({
@@ -222,6 +219,9 @@ writeState({
   emulator_base_url: emulatorUrl(relay.base_url),
   admin_pubkey: keys.admin.pub,
   issuer_pubkey: issuerPubkey,
+  community_root_pubkey: community.rootPubkey,
+  community_anchor_id: community.anchor.id,
+  required_badge_address: community.requiredBadgeAddress,
   user_pubkey: holder.pub,
   venue_profile_id: venueProfile.id,
   venue_profile_created_at: venueProfile.created_at,

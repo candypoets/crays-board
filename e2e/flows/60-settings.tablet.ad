@@ -1,0 +1,31 @@
+# PROFILE-01, MEMBER-02, PAYMENT-01, ROOM-01/02 — tablet settings journey.
+context platform=android timeout=720000
+env APP_ID=life.crays.board
+
+open "craysboard://qa-handoff?target=settings" --metro-port 8090
+wait "id=\"settings-screen\"" 30000
+wait "id=\"settings-profile-description\"" 45000
+fill "id=\"settings-profile-description\"" "Updated by the Crays Board settings QA flow."
+keyboard dismiss
+swipe 920 800 920 350
+wait "id=\"settings-profile-save\"" 15000
+click "id=\"settings-profile-save\""
+wait "id=\"settings-profile-saved\"" 20000
+screenshot "${AD_ARTIFACTS}/60-settings-profile-saved.png"
+click "id=\"settings-nav-memberships\""
+wait "id=\"settings-membership-card-${MEMBERSHIP_D}\"" 20000
+find text "Available" exists
+click "id=\"settings-membership-toggle-${MEMBERSHIP_D}\""
+wait text "Unavailable" 20000
+screenshot "${AD_ARTIFACTS}/60-settings-membership-unavailable.png"
+click "id=\"settings-nav-payments\""
+wait "id=\"payments-status\"" 20000
+wait text "Not configured" 20000
+screenshot "${AD_ARTIFACTS}/60-settings-payments-not-configured.png"
+click "id=\"settings-nav-room\""
+wait "id=\"room-manifest\"" 20000
+is visible "id=\"room-gateway-status\""
+scroll down 0.7
+wait text "Status unavailable" 15000
+screenshot "${AD_ARTIFACTS}/60-settings-room.png"
+close

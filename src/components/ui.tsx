@@ -6,6 +6,7 @@ import {
   Switch,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
   type TextInputProps,
   type ViewStyle,
@@ -22,13 +23,15 @@ export function ScreenTitle({
   description: string;
   action?: ReactNode;
 }) {
+  const { width } = useWindowDimensions();
+  const phone = width < 600;
   return (
-    <View style={styles.titleRow}>
-      <View style={styles.titleCopy}>
-        <Text style={styles.title}>{title}</Text>
+    <View style={[styles.titleRow, phone && styles.titleRowPhone]}>
+      <View style={[styles.titleCopy, phone && styles.titleCopyPhone]}>
+        <Text style={[styles.title, phone && styles.titlePhone]}>{title}</Text>
         <Text style={styles.description}>{description}</Text>
       </View>
-      {action}
+      {action ? <View style={[styles.titleAction, phone && styles.titleActionPhone]}>{action}</View> : null}
     </View>
   );
 }
@@ -58,14 +61,13 @@ export function Button({
       accessibilityLabel={label}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.button,
         compact && styles.buttonCompact,
         tone === "primary" && styles.buttonPrimary,
         tone === "secondary" && styles.buttonSecondary,
         tone === "quiet" && styles.buttonQuiet,
         tone === "danger" && styles.buttonDanger,
-        pressed && styles.pressed,
         disabled && styles.disabled,
       ]}
     >
@@ -170,9 +172,14 @@ export function EmptyState({ icon, title, description, action }: { icon: IconNam
 
 const styles = StyleSheet.create({
   titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", gap: 20, marginBottom: 28 },
-  titleCopy: { flex: 1, maxWidth: 720 },
+  titleRowPhone: { flexDirection: "column", alignItems: "stretch", gap: 14, marginBottom: 20 },
+  titleCopy: { flex: 1, minWidth: 0, maxWidth: 720 },
+  titleCopyPhone: { flexGrow: 0, flexBasis: "auto", width: "100%" },
   title: { color: colors.ink, fontSize: 30, lineHeight: 36, fontWeight: "800", letterSpacing: -0.7 },
+  titlePhone: { fontSize: 26, lineHeight: 32, letterSpacing: -0.5 },
   description: { color: colors.inkMuted, fontSize: 15, lineHeight: 22, marginTop: 6 },
+  titleAction: { flexShrink: 0 },
+  titleActionPhone: { alignSelf: "stretch" },
   button: { minHeight: 48, borderRadius: 14, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   buttonCompact: { minHeight: 42, paddingHorizontal: 14, borderRadius: 12 },
   buttonPrimary: { backgroundColor: colors.pink },

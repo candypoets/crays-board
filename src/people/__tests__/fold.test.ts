@@ -1,10 +1,12 @@
 /// <reference types="jest" />
 
+import type { CommunityTrust } from "@/access/trust";
 import {
   EXPIRING_SOON_SECONDS,
   PERMISSIONS,
   ROLE_LIMIT,
   latestDefinitions,
+  permissionsFromNip97,
   projectPeople,
   projectRoles,
   type PeopleAwardInput,
@@ -12,12 +14,18 @@ import {
   type PeopleProjectionInput,
 } from "@/people/fold";
 
+const ROOT = "9".repeat(64);
 const ADMIN = "a".repeat(64);
 const ISSUER = "e".repeat(64);
 const USER_A = "b".repeat(64);
 const USER_B = "c".repeat(64);
 const USER_C = "d".repeat(64);
+const USER_D = "7".repeat(64);
+const USER_E = "8".repeat(64);
 const NOW = 1_800_000_000;
+
+/** NIP-97 trust: root key, one anchor admin, one delegated badge issuer. */
+const trust: CommunityTrust = { rootPubkey: ROOT, admins: new Set([ADMIN]), badgeIssuer: ISSUER };
 
 const roleDef: PeopleDefinitionInput = {
   address: `30009:${ADMIN}:qa-role`,
@@ -28,6 +36,7 @@ const roleDef: PeopleDefinitionInput = {
   name: "Events host",
   type: "role",
   permissions: ["events", "invites"],
+  sellable: false,
 };
 
 const membershipDef: PeopleDefinitionInput = {
@@ -39,6 +48,20 @@ const membershipDef: PeopleDefinitionInput = {
   name: "Membership",
   type: "membership",
   permissions: [],
+  sellable: false,
+};
+
+/** The node's root-authored, priced `members` invite definition. */
+const inviteDef: PeopleDefinitionInput = {
+  address: `30009:${ROOT}:members`,
+  authorPubkey: ROOT,
+  d: "members",
+  id: "2".repeat(64),
+  createdAt: NOW - 1000,
+  name: "Member",
+  type: "membership",
+  permissions: [],
+  sellable: true,
 };
 
 let awardSeq = 0;
@@ -46,7 +69,7 @@ function award(overrides: Partial<PeopleAwardInput>): PeopleAwardInput {
   awardSeq += 1;
   return {
     id: awardSeq.toString(16).padStart(64, "0"),
-    issuerPubkey: ISSUER,
+    issuerPubkey: ADMIN,
     definitionAddress: membershipDef.address,
     holderPubkey: USER_A,
     createdAt: NOW - 100,
@@ -60,8 +83,7 @@ function baseInput(overrides: Partial<PeopleProjectionInput>): PeopleProjectionI
     definitions: [roleDef, membershipDef],
     revocations: [],
     profiles: [],
-    authorities: new Set([ADMIN]),
-    trustedIssuers: new Set([ADMIN, ISSUER]),
+    trust,
     now: NOW,
     ...overrides,
   };
@@ -75,11 +97,34 @@ describe("constants", () => {
   });
 });
 
+describe("permissionsFromNip97", () => {
+  it("maps NIP-97 grants back to matrix keys in canonical order", () => {
+    expect(
+      permissionsFromNip97([
+        { capability: "settings" },
+        { capability: "30402", access: "write" },
+        { capability: "1", access: "write" },
+      ]),
+    ).toEqual(["posts", "store", "settings"]);
+  });
+
+  it("honors access markers and ignores unknown capabilities", () => {
+    // A read-only grant does not confer the write-gated matrix key.
+    expect(permissionsFromNip97([{ capability: "1", access: "read" }])).toEqual([]);
+    // An unmarked grant covers both read and write.
+    expect(permissionsFromNip97([{ capability: "1" }])).toEqual(["posts"]);
+    // Unknown kinds and named capabilities never map onto the matrix.
+    expect(permissionsFromNip97([{ capability: "9999", access: "write" }, { capability: "billing" }])).toEqual([]);
+  });
+});
+
 describe("projectPeople", () => {
-  it("lists root admins as active even with no awards", () => {
+  it("lists the root key and anchor admins as active even with no awards", () => {
     const people = projectPeople(baseInput({}));
-    expect(people).toHaveLength(1);
-    expect(people[0]).toMatchObject({ pubkey: ADMIN, isRootAdmin: true, status: "active" });
+    expect(people).toHaveLength(2);
+    const byPubkey = new Map(people.map((person) => [person.pubkey, person]));
+    expect(byPubkey.get(ROOT)).toMatchObject({ isRootAdmin: true, status: "active" });
+    expect(byPubkey.get(ADMIN)).toMatchObject({ isRootAdmin: true, status: "active" });
   });
 
   it("derives Active, Expiring soon, and Expired from award expiry (PEOPLE-02)", () => {
@@ -116,19 +161,38 @@ describe("projectPeople", () => {
     expect(person?.permissions).toEqual(["events", "invites"]);
   });
 
-  it("excludes untrusted issuers, unknown definitions, and unrelated definition types", () => {
-    const productDef: PeopleDefinitionInput = { ...membershipDef, address: `30009:${ADMIN}:qa-item`, d: "qa-item", type: "food" };
+  it("applies the NIP-97 issuance and definition-trust rules (PEOPLE-01)", () => {
+    const foreignDef: PeopleDefinitionInput = {
+      ...membershipDef,
+      address: `30009:${USER_C}:qa-membership`,
+      authorPubkey: USER_C,
+    };
+    const unrelatedDef: PeopleDefinitionInput = {
+      ...membershipDef,
+      address: `30009:${ADMIN}:qa-item`,
+      d: "qa-item",
+      type: undefined,
+    };
     const people = projectPeople(
       baseInput({
-        definitions: [roleDef, membershipDef, productDef],
+        definitions: [roleDef, membershipDef, inviteDef, foreignDef, unrelatedDef],
         awards: [
-          award({ holderPubkey: USER_A, issuerPubkey: USER_B }), // untrusted issuer
-          award({ holderPubkey: USER_B, definitionAddress: `30009:${ADMIN}:missing` }), // no definition
-          award({ holderPubkey: USER_C, definitionAddress: productDef.address }), // not role/membership
+          // Badge-issuer invite award of the priced `members` def counts.
+          award({ holderPubkey: USER_A, definitionAddress: inviteDef.address, issuerPubkey: ISSUER }),
+          // Unpriced definitions require an anchor admin signer.
+          award({ holderPubkey: USER_B, issuerPubkey: ISSUER }),
+          // The definition must resolve on the venue relay.
+          award({ holderPubkey: USER_C, definitionAddress: `30009:${ADMIN}:missing` }),
+          // Definitions from untrusted authors never create a person.
+          award({ holderPubkey: USER_D, definitionAddress: foreignDef.address }),
+          // Definitions without a role/membership topic never create a person.
+          award({ holderPubkey: USER_E, definitionAddress: unrelatedDef.address }),
         ],
       }),
     );
-    expect(people.map((person) => person.pubkey)).toEqual([ADMIN]);
+    expect(people.map((person) => person.pubkey).sort()).toEqual([ADMIN, ROOT, USER_A].sort());
+    const invited = people.find((entry) => entry.pubkey === USER_A);
+    expect(invited?.awards[0]).toMatchObject({ kind: "membership", name: "Member", active: true });
   });
 
   it("a revoked award grants nothing and leaves the holder Expired (PEOPLE-01)", () => {
@@ -136,7 +200,7 @@ describe("projectPeople", () => {
     const people = projectPeople(
       baseInput({
         awards: [revoked],
-        revocations: [{ id: "2".repeat(64), authorPubkey: ADMIN, awardIds: [revoked.id], createdAt: NOW - 10 }],
+        revocations: [{ id: "3".repeat(64), authorPubkey: ADMIN, awardIds: [revoked.id], createdAt: NOW - 10 }],
       }),
     );
     const person = people.find((entry) => entry.pubkey === USER_A);
@@ -145,12 +209,24 @@ describe("projectPeople", () => {
     expect(person?.permissions).toEqual([]);
   });
 
-  it("ignores revocations from untrusted signers", () => {
+  it("counts a revocation from the award's own issuer", () => {
+    const target = award({ holderPubkey: USER_A, definitionAddress: inviteDef.address, issuerPubkey: ISSUER });
+    const people = projectPeople(
+      baseInput({
+        definitions: [roleDef, membershipDef, inviteDef],
+        awards: [target],
+        revocations: [{ id: "3".repeat(64), authorPubkey: ISSUER, awardIds: [target.id], createdAt: NOW - 10 }],
+      }),
+    );
+    expect(people.find((entry) => entry.pubkey === USER_A)?.status).toBe("expired");
+  });
+
+  it("ignores revocations from signers who are neither issuer nor admin", () => {
     const target = award({ holderPubkey: USER_A });
     const people = projectPeople(
       baseInput({
         awards: [target],
-        revocations: [{ id: "2".repeat(64), authorPubkey: USER_C, awardIds: [target.id], createdAt: NOW - 10 }],
+        revocations: [{ id: "3".repeat(64), authorPubkey: USER_C, awardIds: [target.id], createdAt: NOW - 10 }],
       }),
     );
     expect(people.find((entry) => entry.pubkey === USER_A)?.status).toBe("active");
@@ -183,11 +259,11 @@ describe("latestDefinitions", () => {
 });
 
 describe("projectRoles", () => {
-  it("lists trusted role definitions with canonical permission order", () => {
+  it("lists admin-authored role definitions with canonical permission order", () => {
     const shuffled: PeopleDefinitionInput = { ...roleDef, permissions: ["invites", "events"] };
     const roles = projectRoles({
       definitions: [shuffled, membershipDef],
-      trustedIssuers: new Set([ADMIN]),
+      trust,
       activePubkey: ADMIN.toUpperCase(),
     });
     expect(roles).toHaveLength(1);
@@ -199,11 +275,22 @@ describe("projectRoles", () => {
     });
   });
 
-  it("drops untrusted authors and non-editable roles for other keys", () => {
-    const foreign: PeopleDefinitionInput = { ...roleDef, address: `30009:${USER_C}:role`, authorPubkey: USER_C, d: "role" };
+  it("drops roles from non-admin authors, including the root key", () => {
+    const foreign: PeopleDefinitionInput = {
+      ...roleDef,
+      address: `30009:${USER_C}:role`,
+      authorPubkey: USER_C,
+      d: "role",
+    };
+    const rootAuthored: PeopleDefinitionInput = {
+      ...roleDef,
+      address: `30009:${ROOT}:root-role`,
+      authorPubkey: ROOT,
+      d: "root-role",
+    };
     const roles = projectRoles({
-      definitions: [roleDef, foreign],
-      trustedIssuers: new Set([ADMIN]),
+      definitions: [roleDef, foreign, rootAuthored],
+      trust,
       activePubkey: USER_A,
     });
     expect(roles).toHaveLength(1);

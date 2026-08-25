@@ -1,0 +1,52 @@
+# PEOPLE-01/02/04 and ROLE-01/02/03 — tablet journey.
+context platform=android timeout=720000
+env APP_ID=life.crays.board
+
+open "craysboard://qa-handoff?target=people" --metro-port 8090
+wait "id=\"people-screen\"" 60000
+wait text "QA Active Member" 45000
+find text "QA Expiring Member" exists
+find text "Active" exists
+find text "Expiring soon" exists
+scroll down 0.7
+wait text "QA Expired Member" 15000
+find text "Expired" exists
+screenshot "${AD_ARTIFACTS}/40-people-list.png"
+
+scroll up 0.7
+click "label=\"QA Active Member\""
+wait "id=\"revoke-membership-button\"" 15000
+click "id=\"revoke-membership-button\""
+wait "id=\"revoke-confirm-button\"" 10000
+press "id=\"revoke-confirm-button\"" --double-tap
+wait text "Membership revoked" 20000
+screenshot "${AD_ARTIFACTS}/40-people-revoked.png"
+
+click "id=\"people-tab-roles\""
+wait text "QA Events host" 15000
+click "label=\"QA Events host\""
+wait "id=\"permission-toggle-posts\"" 15000
+click "id=\"permission-toggle-posts\""
+# The tablet exposes three independent scroll panes. This coordinate is recorded
+# inside the middle role-editor pane; the viewport itself is fixed by the tablet QA
+# contract (1600x1000), so replay remains deterministic.
+gesture pan 1000 780 0 -300 500
+gesture pan 1000 780 0 -300 500
+gesture pan 1000 780 0 -300 500
+gesture pan 1000 780 0 -300 500
+gesture pan 1000 780 0 -300 500
+wait "id=\"save-role-button\"" 15000
+click "id=\"save-role-button\""
+wait text "Role saved" 20000
+screenshot "${AD_ARTIFACTS}/40-people-role-saved.png"
+
+click "id=\"people-tab-people\""
+wait text "QA Expiring Member" 15000
+click "label=\"QA Expiring Member\""
+wait "id=\"person-assign-role-button\"" 15000
+click "id=\"person-assign-role-button\""
+wait "id=\"assign-confirm-button\"" 15000
+click "id=\"assign-confirm-button\""
+wait text "Role assigned" 20000
+screenshot "${AD_ARTIFACTS}/40-people-assigned.png"
+close

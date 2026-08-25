@@ -1,0 +1,199 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <style>
+      .ui { font-family: Arial, Helvetica, sans-serif; fill: #2B1420; }
+      .muted { fill: #735966; }
+      .faint { fill: #A58D98; }
+      .railText { fill: #F5DDE5; }
+      .white { fill: #FFFFFF; }
+      .bold { font-weight: 700; }
+      .heavy { font-weight: 800; }
+      .label { font-size: 14px; font-weight: 700; }
+      .body { font-size: 16px; }
+      .small { font-size: 13px; }
+      .tiny { font-size: 11px; }
+      .stroke { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+    </style>
+    <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="10" flood-color="#2B1420" flood-opacity="0.05"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#FFF7F8"/>
+  <rect width="1600" height="32" fill="#160A11"/>
+  <text x="20" y="22" class="ui white small bold">15:58</text>
+  <circle cx="1518" cy="16" r="4" fill="#FFFFFF"/>
+  <path d="M1533 20c8-9 18-9 26 0M1538 20c5-5 11-5 16 0" class="stroke" stroke="#FFFFFF"/>
+  <rect x="1570" y="9" width="16" height="14" rx="3" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+  <rect x="1586" y="13" width="3" height="6" rx="1" fill="#FFFFFF"/>
+
+  <!-- Venue rail -->
+  <rect x="0" y="32" width="232" height="968" fill="#160A11"/>
+  <path d="M28 66c17 0 24-7 24-24 0 17 7 24 24 24-17 0-24 7-24 24 0-17-7-24-24-24Z" fill="#F50A48"/>
+  <text x="88" y="72" class="ui white heavy" font-size="20">crays board</text>
+  <rect x="16" y="110" width="200" height="76" rx="16" fill="#241019" stroke="#3B1B28"/>
+  <rect x="28" y="124" width="48" height="48" rx="14" fill="#FF7668"/>
+  <text x="52" y="153" class="ui heavy" font-size="14" text-anchor="middle">MC</text>
+  <text x="88" y="143" class="ui white bold" font-size="14">Maison Crays</text>
+  <text x="88" y="164" class="ui railText small">Open for service</text>
+  <path d="M196 143l5 5 5-5" class="stroke" stroke="#CDAFBB"/>
+
+  <g class="ui railText body">
+    <path d="M34 230l10-9 10 9v11H47v-7h-6v7h-7Z" class="stroke" stroke="#CDAFBB"/>
+    <text x="70" y="237">Home</text>
+
+    <rect x="12" y="266" width="208" height="52" rx="14" fill="#3B1B28"/>
+    <rect x="12" y="276" width="4" height="32" rx="2" fill="#F50A48"/>
+    <path d="M34 283h20v18H34zM38 278h12v5" class="stroke" stroke="#F50A48"/>
+    <text x="70" y="298" class="ui white bold">Orders</text>
+    <rect x="182" y="279" width="26" height="26" rx="13" fill="#C9063A"/>
+    <text x="195" y="297" class="ui white tiny heavy" text-anchor="middle">3</text>
+
+    <path d="M34 350h20M38 344v22M44 344v22M50 344v22" class="stroke" stroke="#CDAFBB"/>
+    <text x="70" y="360">Menu</text>
+    <rect x="34" y="395" width="20" height="19" rx="3" class="stroke" stroke="#CDAFBB"/>
+    <path d="M39 390v7M49 390v7M38 403h12" class="stroke" stroke="#CDAFBB"/>
+    <text x="70" y="409">Events</text>
+    <circle cx="40" cy="452" r="6" class="stroke" stroke="#CDAFBB"/>
+    <circle cx="51" cy="454" r="5" class="stroke" stroke="#CDAFBB"/>
+    <path d="M30 467c2-8 18-8 20 0M47 467c2-6 12-6 15 0" class="stroke" stroke="#CDAFBB"/>
+    <text x="70" y="462">People</text>
+    <path d="M33 503h22v18H33zM39 503v18M49 503v18" class="stroke" stroke="#CDAFBB"/>
+    <text x="70" y="516">Invites</text>
+    <circle cx="44" cy="562" r="10" class="stroke" stroke="#CDAFBB"/>
+    <circle cx="44" cy="562" r="3" class="stroke" stroke="#CDAFBB"/>
+    <text x="70" y="568">Settings</text>
+  </g>
+  <rect x="16" y="914" width="200" height="62" rx="15" fill="#241019"/>
+  <circle cx="46" cy="945" r="18" fill="#FFE3EA"/>
+  <text x="46" y="950" class="ui heavy" fill="#C9063A" font-size="11" text-anchor="middle">MI</text>
+  <text x="76" y="940" class="ui white small bold">Mina</text>
+  <text x="76" y="959" class="ui railText tiny">Service lead</text>
+  <circle cx="196" cy="945" r="3" fill="#167A58"/>
+
+  <!-- Context bar -->
+  <rect x="232" y="32" width="1368" height="72" fill="#FFF7F8"/>
+  <line x1="232" y1="103.5" x2="1600" y2="103.5" stroke="#EEDCE2"/>
+  <circle cx="270" cy="68" r="5" fill="#167A58"/>
+  <text x="286" y="73" class="ui small bold">Live orders</text>
+  <text x="361" y="73" class="ui muted small">· updated just now</text>
+  <text x="1310" y="63" class="ui small bold" text-anchor="end">Dinner service</text>
+  <text x="1310" y="82" class="ui muted tiny" text-anchor="end">Maison Crays</text>
+  <circle cx="1354" cy="68" r="21" fill="#FFE3EA"/>
+  <text x="1354" y="73" class="ui heavy" fill="#C9063A" font-size="11" text-anchor="middle">MI</text>
+  <rect x="1402" y="46" width="156" height="44" rx="13" fill="#FFFFFF" stroke="#D9BEC8"/>
+  <text x="1480" y="73" class="ui label" text-anchor="middle">Order settings</text>
+
+  <!-- Header and controls -->
+  <text x="264" y="158" class="ui heavy" font-size="34" letter-spacing="-0.7">Orders</text>
+  <text x="264" y="188" class="ui muted body">Keep each ticket moving one confirmed step at a time.</text>
+
+  <rect x="1080" y="130" width="182" height="52" rx="15" fill="#FFFFFF" stroke="#D9BEC8"/>
+  <text x="1104" y="162" class="ui label">All service points</text>
+  <path d="M1236 151l6 6 6-6" class="stroke" stroke="#735966"/>
+  <rect x="1276" y="130" width="282" height="52" rx="15" fill="#160A11"/>
+  <circle cx="1303" cy="156" r="5" fill="#FF7668"/>
+  <text x="1320" y="162" class="ui white label">3 open · oldest wait 14 min</text>
+
+  <rect x="264" y="208" width="132" height="44" rx="13" fill="#FFE3EA"/>
+  <text x="330" y="235" class="ui label" fill="#C9063A" text-anchor="middle">Active 4</text>
+  <rect x="408" y="208" width="132" height="44" rx="13" fill="#FFFFFF" stroke="#EEDCE2"/>
+  <text x="474" y="235" class="ui label" text-anchor="middle">Completed</text>
+  <rect x="552" y="208" width="132" height="44" rx="13" fill="#FFFFFF" stroke="#EEDCE2"/>
+  <text x="618" y="235" class="ui label" text-anchor="middle">Cancelled</text>
+  <text x="1558" y="236" class="ui muted small" text-anchor="end">A card moves only after the venue confirms the change.</text>
+
+  <!-- Lane: New -->
+  <rect x="256" y="276" width="316" height="654" rx="18" fill="#FFF0F2" stroke="#EEDCE2"/>
+  <text x="278" y="314" class="ui heavy" fill="#C9063A" font-size="18">New</text>
+  <rect x="520" y="294" width="30" height="30" rx="15" fill="#C9063A"/>
+  <text x="535" y="314" class="ui white small heavy" text-anchor="middle">2</text>
+  <text x="278" y="339" class="ui muted tiny">Accept or decline · oldest first</text>
+
+  <rect x="270" y="358" width="288" height="210" rx="16" fill="#FFFFFF" filter="url(#cardShadow)"/>
+  <text x="290" y="390" class="ui muted tiny bold">ORDER 1042</text>
+  <text x="538" y="390" class="ui heavy" fill="#B4233D" font-size="17" text-anchor="end">14 min</text>
+  <text x="290" y="426" class="ui heavy" font-size="19">Miso aubergine</text>
+  <text x="290" y="451" class="ui muted small">1 item · counter pickup</text>
+  <text x="290" y="476" class="ui muted small">Guest 5724…</text>
+  <rect x="290" y="500" width="158" height="48" rx="14" fill="#C9063A"/>
+  <text x="369" y="530" class="ui white label" text-anchor="middle">Accept order</text>
+  <circle cx="524" cy="524" r="22" fill="#FFF7F8"/>
+  <path d="M516 516l16 16M532 516l-16 16" class="stroke" stroke="#735966"/>
+
+  <rect x="270" y="582" width="288" height="210" rx="16" fill="#FFFFFF" filter="url(#cardShadow)"/>
+  <text x="290" y="614" class="ui muted tiny bold">ORDER 1045</text>
+  <text x="538" y="614" class="ui heavy" fill="#9A5C00" font-size="17" text-anchor="end">8 min</text>
+  <text x="290" y="650" class="ui heavy" font-size="19">Beef brisket</text>
+  <text x="290" y="675" class="ui muted small">2 items · table 8</text>
+  <text x="290" y="700" class="ui muted small">Guest 8f14…</text>
+  <rect x="290" y="724" width="158" height="48" rx="14" fill="#C9063A"/>
+  <text x="369" y="754" class="ui white label" text-anchor="middle">Accept order</text>
+  <circle cx="524" cy="748" r="22" fill="#FFF7F8"/>
+  <path d="M516 740l16 16M532 740l-16 16" class="stroke" stroke="#735966"/>
+
+  <!-- Lane: Accepted -->
+  <rect x="584" y="276" width="316" height="654" rx="18" fill="#F6F8FE" stroke="#DCE3F6"/>
+  <text x="606" y="314" class="ui heavy" fill="#3856A6" font-size="18">Accepted</text>
+  <rect x="848" y="294" width="30" height="30" rx="15" fill="#3856A6"/>
+  <text x="863" y="314" class="ui white small heavy" text-anchor="middle">1</text>
+  <text x="606" y="339" class="ui muted tiny">Ready to start preparation</text>
+
+  <rect x="598" y="358" width="288" height="210" rx="16" fill="#FFFFFF" filter="url(#cardShadow)"/>
+  <text x="618" y="390" class="ui muted tiny bold">ORDER 1046</text>
+  <text x="866" y="390" class="ui heavy" fill="#3856A6" font-size="17" text-anchor="end">4 min</text>
+  <text x="618" y="426" class="ui heavy" font-size="19">Truffle pasta</text>
+  <text x="618" y="451" class="ui muted small">1 item · bar pickup</text>
+  <text x="618" y="476" class="ui muted small">Guest a87f…</text>
+  <rect x="618" y="500" width="190" height="48" rx="14" fill="#3856A6"/>
+  <text x="713" y="530" class="ui white label" text-anchor="middle">Start preparing</text>
+  <circle cx="852" cy="524" r="22" fill="#F6F8FE"/>
+  <text x="852" y="529" class="ui muted heavy" font-size="18" text-anchor="middle">•••</text>
+
+  <rect x="606" y="596" width="272" height="84" rx="14" fill="#EEF2FC"/>
+  <text x="622" y="626" class="ui bold" fill="#3856A6" font-size="13">Handoff cue</text>
+  <text x="622" y="650" class="ui muted small">The kitchen sees accepted orders here.</text>
+
+  <!-- Lane: Preparing -->
+  <rect x="912" y="276" width="316" height="654" rx="18" fill="#FFF7EF" stroke="#F3DFC8"/>
+  <text x="934" y="314" class="ui heavy" fill="#A94E12" font-size="18">Preparing</text>
+  <rect x="1176" y="294" width="30" height="30" rx="15" fill="#FF7668"/>
+  <text x="1191" y="314" class="ui white small heavy" text-anchor="middle">1</text>
+  <text x="934" y="339" class="ui muted tiny">Mark ready at the pass</text>
+
+  <rect x="926" y="358" width="288" height="210" rx="16" fill="#FFFFFF" filter="url(#cardShadow)"/>
+  <text x="946" y="390" class="ui muted tiny bold">ORDER 1039</text>
+  <text x="1194" y="390" class="ui heavy" fill="#A94E12" font-size="17" text-anchor="end">12 min</text>
+  <text x="946" y="426" class="ui heavy" font-size="19">Roast squash</text>
+  <text x="946" y="451" class="ui muted small">3 items · table 3</text>
+  <text x="946" y="476" class="ui muted small">Guest c311…</text>
+  <rect x="946" y="500" width="150" height="48" rx="14" fill="#FF7668"/>
+  <text x="1021" y="530" class="ui heavy" text-anchor="middle">Mark ready</text>
+  <circle cx="1180" cy="524" r="22" fill="#FFF7EF"/>
+  <text x="1180" y="529" class="ui muted heavy" font-size="18" text-anchor="middle">•••</text>
+
+  <rect x="934" y="596" width="272" height="84" rx="14" fill="#FFF0E5"/>
+  <text x="950" y="626" class="ui bold" fill="#A94E12" font-size="13">Timing</text>
+  <text x="950" y="650" class="ui muted small">Amber at 10 min · red at 15 min.</text>
+
+  <!-- Lane: Ready -->
+  <rect x="1240" y="276" width="316" height="654" rx="18" fill="#F2FAF6" stroke="#D7EEE4"/>
+  <text x="1262" y="314" class="ui heavy" fill="#167A58" font-size="18">Ready</text>
+  <rect x="1504" y="294" width="30" height="30" rx="15" fill="#DDF4EA"/>
+  <text x="1519" y="314" class="ui heavy" fill="#167A58" font-size="13" text-anchor="middle">0</text>
+  <text x="1262" y="339" class="ui muted tiny">Waiting for collection</text>
+
+  <circle cx="1398" cy="470" r="42" fill="#DDF4EA"/>
+  <path d="M1378 470l13 13 28-30" class="stroke" stroke="#167A58" stroke-width="5"/>
+  <text x="1398" y="540" class="ui heavy" font-size="18" text-anchor="middle">Pass is clear</text>
+  <text x="1398" y="566" class="ui muted small" text-anchor="middle">Ready orders will land here</text>
+  <text x="1398" y="586" class="ui muted small" text-anchor="middle">with their pickup cue.</text>
+
+  <rect x="1262" y="728" width="272" height="136" rx="16" fill="#FFFFFF" stroke="#D7EEE4"/>
+  <text x="1282" y="760" class="ui bold" fill="#167A58" font-size="13">NEXT HANDOFF</text>
+  <text x="1282" y="794" class="ui heavy" font-size="17">No guests waiting</text>
+  <text x="1282" y="820" class="ui muted small">Collection stays visible when</text>
+  <text x="1282" y="840" class="ui muted small">the first order becomes ready.</text>
+
+  <text x="256" y="966" class="ui faint small">Illustrative service state · actions use 48dp targets and color-independent labels.</text>
+</svg>

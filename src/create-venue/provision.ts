@@ -1,4 +1,6 @@
-import { publishEvent } from "@/nostr/publish";
+import type { EventTemplate } from "nostr-tools";
+
+import { publishEvent, type PublishResult } from "@/nostr/publish";
 import type { VenueSelection } from "@/venue/VenueContext";
 
 import {
@@ -57,6 +59,49 @@ export type ProvisionResult = {
   attemptId: string;
   relayId: string;
 };
+
+type VenueProfilePublisher = (
+  template: EventTemplate,
+  relays: string[],
+  operation: string,
+  timeoutMs?: number,
+) => Promise<PublishResult>;
+
+/**
+ * A newly-created relay can accept WebSockets just before its NIP-97 policy
+ * cache is ready to authorize the owner profile. Retry only this provisioning
+ * boundary, with a hard deadline; ordinary mutations still fail immediately
+ * when a relay rejects them.
+ */
+export async function publishVenueProfileWithRetry(
+  template: EventTemplate,
+  relayUrl: string,
+  {
+    publish = publishEvent,
+    timeoutMs = 25_000,
+    intervalMs = 750,
+    now = Date.now,
+    delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+  }: {
+    publish?: VenueProfilePublisher;
+    timeoutMs?: number;
+    intervalMs?: number;
+    now?: () => number;
+    delay?: (ms: number) => Promise<void>;
+  } = {},
+): Promise<PublishResult> {
+  const deadline = now() + timeoutMs;
+  while (true) {
+    try {
+      const remaining = Math.max(1_000, deadline - now());
+      return await publish(template, [relayUrl], "create_venue_profile", Math.min(5_000, remaining));
+    } catch (error) {
+      const remaining = deadline - now();
+      if (remaining <= 0) throw error;
+      await delay(Math.min(intervalMs, remaining));
+    }
+  }
+}
 
 export async function provisionVenue(
   draft: VenueDraft,
@@ -137,7 +182,7 @@ export async function provisionVenue(
   // confirmed only by an affirmative relay acknowledgement (publishEvent).
   // QA proves the exact profile independently from relay truth.
   await runStage("profile", async () => {
-    await publishEvent(buildVenueProfileTemplate(attempt.draft), [relayUrl], "create_venue_profile", 20_000);
+    await publishVenueProfileWithRetry(buildVenueProfileTemplate(attempt.draft), relayUrl);
     await saveAttempt({ ...attempt, phase: "profile_published", relayUrl, serviceUrl });
   });
 

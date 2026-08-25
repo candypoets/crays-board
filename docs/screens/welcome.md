@@ -1,6 +1,6 @@
 # Welcome (cold entry)
 
-Executable contract: `maestro/flows/00-welcome.yaml` via `.qa/qa-welcome.mjs`.
+Executable contract: `e2e/flows/00-welcome.ad` via `.qa/qa-welcome.mjs`.
 Covers ENTRY-01 from `docs/testing/QA_WORKFLOWS.md`; visual reference
 `design/mockups/crays-board-welcome-tablet.png`.
 
@@ -12,7 +12,7 @@ Covers ENTRY-01 from `docs/testing/QA_WORKFLOWS.md`; visual reference
 - **Starting truth:** app package state cleared (`pm clear life.crays.board`),
   no signer account, no venue references, no relay or coordinator resources
   owned by this scenario. One Android device, Metro serving the dev client on
-  port 8085.
+  port 8090.
 - **User action:** cold launch only, through the public development-client
   entry path. No taps beyond reaching the welcome surface.
 - **Visible result:** `welcome-screen` is visible with **Create venue** as the
@@ -33,5 +33,5 @@ Covers ENTRY-01 from `docs/testing/QA_WORKFLOWS.md`; visual reference
   their own contracts. Rotation, process recreation, and back behavior are
   covered by the cross-cutting QUALITY scenarios.
 - **Cleanup:** teardown clears exactly the `life.crays.board` package state
-  and removes `/tmp/qa-crays-board-entry.json`. The Maestro screenshot
+  and removes `/tmp/qa-crays-board-entry.json`. The Agent Device screenshot
   `00-welcome` is retained for diagnosis. No infrastructure exists to delete.

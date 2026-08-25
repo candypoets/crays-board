@@ -1,0 +1,36 @@
+# EVENT-09…12 — phone manual check-in outcomes and honest camera gate.
+context platform=android timeout=720000
+env APP_ID=life.crays.board
+
+open "craysboard://qa-handoff?target=check-in" --metro-port 8090
+wait "id=\"check-in-screen\"" 30000
+wait "id=\"check-in-progress\"" 45000
+find text "1 of 2 checked in" exists
+screenshot "${AD_ARTIFACTS}/31-check-in-ready.png"
+fill "id=\"check-in-code-input\"" "${PRESENTATION_VALID}"
+keyboard dismiss
+scroll down 0.7
+wait "id=\"check-in-submit\"" 15000
+click "id=\"check-in-submit\""
+wait text "Entry accepted" 20000
+wait text "2 of 2 checked in" 30000
+screenshot "${AD_ARTIFACTS}/31-check-in-accepted.png"
+fill "id=\"check-in-code-input\"" "${PRESENTATION_FULFILLED}"
+keyboard dismiss
+scroll down 0.7
+click "id=\"check-in-submit\""
+wait text "Already checked in" 60000
+screenshot "${AD_ARTIFACTS}/31-check-in-already-checked-in.png"
+fill "id=\"check-in-code-input\"" "${PRESENTATION_WRONG_EVENT}"
+keyboard dismiss
+scroll down 0.7
+click "id=\"check-in-submit\""
+wait "id=\"check-in-result-error\"" 60000
+find text "This pass is for a different event." exists
+screenshot "${AD_ARTIFACTS}/31-check-in-wrong-event.png"
+scroll down 0.8
+click "id=\"check-in-scan-button\""
+wait "id=\"check-in-camera-unavailable\"" 10000
+find text "Camera not available in this build" exists
+screenshot "${AD_ARTIFACTS}/31-check-in-camera-unavailable.png"
+close

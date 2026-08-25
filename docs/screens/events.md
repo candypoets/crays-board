@@ -12,9 +12,14 @@ Staff identity (QA admin key) with venue authority on an isolated venue relay pr
 
 ## Starting truth
 
-- Isolated relay `craysboardqa-venue-<run>` with the base venue family (profile `30078`, product `30009`, issuer award `8`) plus:
+- Isolated relay `craysboardqa-venue-<run>` with its NIP-11/root-signed
+  `31727` trust bootstrap and base venue family (profile `30078`, product
+  listing `30402`, delegated-issuer award `8`) plus:
   - one upcoming kind `31923` (`d=qa-event-<run>`, title "QA Seed Event", `start`/`end` in the future, `summary`, `location=QA Hall`, `capacity=48`), signed by the venue admin authority;
-  - a non-sellable members badge definition (`30009`, `d=members`, issuer-signed) and three membership badge grants (kind `8`, issuer-signed) — the relay write gate only accepts guest writes from current members;
+  - an admin-authored `30009` role definition (`t=role`) granting
+    `31925/write`, plus admin-authored role awards to the three RSVP fixture
+    users — the relay gate is capability-scoped rather than treating
+    membership as blanket write access;
   - four kind `31925` RSVPs referencing the event address: users[0] declined (older `created_at`, distinct `d` so both copies stay stored) then accepted (superseding copy), users[1] accepted, users[2] tentative — each signed by its own attendee key. Relay fold truth: accepted=2, tentative=1, declined=0.
 - App installed, state cleared, Metro on 8090, one Android device.
 

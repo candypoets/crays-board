@@ -31,7 +31,7 @@ Crays Board is not a generic back-office database or a traditional POS clone. It
 ## Capabilities and Constraints
 
 - Core areas: Create venue, Home, Orders, Menu, Events, People/Roles, Invites, and Settings.
-- Expo 57, React Native, Expo Router, NativeWind, one native `nipworker` manager, SecureStore, Jest, React Native Testing Library, and Maestro follow the `crays-rn` baseline.
+- Expo 57, React Native, Expo Router, NativeWind, one native `nipworker` manager, SecureStore, Jest, React Native Testing Library, and native Agent Device `.ad` journeys follow the `crays-rn` baseline.
 - Expo Go is unsupported because `nipworker` is native.
 - There is no parallel generic CRUD backend or mobile-only venue database.
 - Writes require venue relay/service acknowledgement and independent QA verification.

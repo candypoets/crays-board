@@ -1,0 +1,36 @@
+# CREATE-01…06 — provision a real venue from the four-step wizard.
+context platform=android timeout=720000
+env APP_ID=life.crays.board
+env DEV_CLIENT_URL="exp+crays-board://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8090"
+
+open "${APP_ID}" --metro-port 8090 --launch-url "${DEV_CLIENT_URL}"
+wait "id=\"welcome-screen\"" 120000
+click "id=\"create-venue-button\""
+wait "id=\"create-venue-screen\"" 30000
+fill "id=\"cv-name-input\"" "${QA_VENUE_NAME}"
+is visible "id=\"cv-slug\""
+fill "id=\"cv-description-input\"" "QA venue for the Crays Board create-venue scenario."
+keyboard dismiss
+click "id=\"cv-continue\""
+wait "id=\"cv-timezone-input\"" 15000
+click "id=\"cv-continue\""
+click "id=\"cv-import-account-button\""
+fill "id=\"cv-nsec-input\"" "${QA_NSEC}"
+keyboard dismiss
+click "id=\"cv-import-confirm-button\""
+wait "id=\"cv-account-created\"" 30000
+fill "id=\"cv-owner-name-input\"" "QA Owner"
+keyboard dismiss
+click "id=\"cv-recovery-checkbox\""
+click "id=\"cv-continue\""
+wait "id=\"cv-review\"" 15000
+find text "${QA_VENUE_NAME}" exists
+click "id=\"cv-submit\""
+wait "id=\"create-venue-provisioning\"" 30000
+wait "id=\"create-venue-success-screen\"" 300000
+find text "Venue created" exists
+screenshot "${AD_ARTIFACTS}/70-create-venue-success.png"
+click "id=\"cv-open-venue-button\""
+wait "id=\"home-screen\"" 60000
+screenshot "${AD_ARTIFACTS}/70-create-venue-home.png"
+close

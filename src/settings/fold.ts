@@ -1,3 +1,5 @@
+import { definitionAuthorTrusted, type CommunityTrust } from "@/access/trust";
+
 import {
   ROOM_MANIFEST_D_PREFIX,
   ROOM_MANIFEST_SCHEMA,
@@ -8,7 +10,8 @@ import {
 /**
  * Pure settings projections. The subscription coordinator in
  * useSettingsData.ts extracts plain inputs at the worker boundary and folds
- * them through these functions, mirroring src/orders/fold.ts.
+ * them through these functions, mirroring src/orders/fold.ts. Trust comes
+ * from the venue relay's NIP-97 anchor (see src/access/trust.ts).
  */
 
 export type VenueProfile = {
@@ -27,9 +30,9 @@ export type VenueProfileInput = Omit<VenueProfile, "hospitalityType" | "descript
   description?: string;
 };
 
-/** Latest addressable venue profile at d=nuts-community-profile, or null. */
-export function foldVenueProfile(inputs: VenueProfileInput[]): VenueProfile | null {
-  const latest = latestByCreatedAt(inputs);
+/** Latest addressable venue profile at d=nuts-community-profile by a trusted author, or null. */
+export function foldVenueProfile(inputs: VenueProfileInput[], trust: CommunityTrust): VenueProfile | null {
+  const latest = latestByCreatedAt(inputs.filter((input) => definitionAuthorTrusted(input.authorPubkey, trust)));
   if (!latest) return null;
   return {
     ...latest,
@@ -57,33 +60,43 @@ export type MembershipPlan = {
 export type MembershipInput = Omit<MembershipPlan, "name" | "description" | "period" | "availability"> & {
   name?: string;
   description?: string;
-  period?: string;
+  /** Raw NIP-99 price-tag recurrence ("month"/"year"); absent for one-time plans. */
+  recurrence?: string;
   availability?: string;
 };
 
 /**
- * Latest membership definition per stable d, oldest plan first. Only
- * type=membership definitions reach this fold (the coordinator filters).
+ * Latest membership plan per stable d, oldest plan first. NIP-97 projection
+ * rules: only anchor admins author editable plans (deliberately not the root
+ * key — the relay node's root-authored `30009:<root>:members` invite-badge
+ * definition stays out, same as the old type=badge exclusion), and a plan
+ * requires a name. The coordinator already filtered the membership `t` topic
+ * and the well-formed price tag at the worker boundary.
  */
-export function foldMemberships(inputs: MembershipInput[]): MembershipPlan[] {
+export function foldMemberships(inputs: MembershipInput[], trust: CommunityTrust): MembershipPlan[] {
   const byD = new Map<string, MembershipInput>();
   for (const input of inputs) {
+    if (!trust.admins.has(input.authorPubkey) || !input.name) continue;
     const previous = byD.get(input.d);
     if (!previous || isNewer(input, previous)) byD.set(input.d, input);
   }
   return [...byD.values()]
-    .map((input) => ({
-      ...input,
-      name: input.name ?? input.d,
-      description: input.description ?? "",
-      period: normalizePeriod(input.period),
-      availability: normalizeAvailability(input.availability),
-    }))
+    .map((input) => {
+      const { recurrence, ...rest } = input;
+      return {
+        ...rest,
+        name: input.name ?? "",
+        description: input.description ?? "",
+        period: normalizePeriod(recurrence),
+        availability: normalizeAvailability(input.availability),
+      };
+    })
     .sort((a, b) => a.createdAt - b.createdAt || (a.d < b.d ? -1 : 1));
 }
 
-function normalizePeriod(value: string | undefined): MembershipPeriod {
-  return value === "monthly" || value === "yearly" ? value : "one-time";
+/** NIP-99 recurrence → staff billing period: month/year map, anything else is one-time. */
+function normalizePeriod(recurrence: string | undefined): MembershipPeriod {
+  return recurrence === "month" ? "monthly" : recurrence === "year" ? "yearly" : "one-time";
 }
 
 function normalizeAvailability(value: string | undefined): Availability {
@@ -119,16 +132,18 @@ export type RoomManifestInput = {
 };
 
 /**
- * Latest valid room manifest. A manifest counts only when it follows the
- * versioned contract: d=life.crays/room/v1/<room-id>, matching schema tag,
- * operator equal to the signing pubkey, and a future expiration (crays-rn
- * protocol-contract; ROOM-01 — expired or wrong-authority manifests are never
- * shown as healthy). Relay reachability and gateway health are deliberately
- * not derived here (ROOM-02 separation).
+ * Latest valid room manifest by a trusted author (anchor admin or root). A
+ * manifest counts only when it follows the versioned contract:
+ * d=life.crays/room/v1/<room-id>, matching schema tag, operator equal to the
+ * signing pubkey, and a future expiration (crays-rn protocol-contract;
+ * ROOM-01 — expired or wrong-authority manifests are never shown as
+ * healthy). Relay reachability and gateway health are deliberately not
+ * derived here (ROOM-02 separation).
  */
-export function foldRoomManifest(inputs: RoomManifestInput[], now: number): RoomManifest | null {
+export function foldRoomManifest(inputs: RoomManifestInput[], now: number, trust: CommunityTrust): RoomManifest | null {
   const valid = inputs.filter(
     (input) =>
+      definitionAuthorTrusted(input.authorPubkey, trust) &&
       input.d.startsWith(ROOM_MANIFEST_D_PREFIX) &&
       input.schema === ROOM_MANIFEST_SCHEMA &&
       !!input.operator &&
@@ -153,7 +168,7 @@ export function foldRoomManifest(inputs: RoomManifestInput[], now: number): Room
 
 type Created = { id: string; createdAt: number };
 
-/** §3.1 resolution: latest by created_at; ties break by higher event id. */
+/** Addressable resolution: latest by created_at; ties break by higher event id. */
 function isNewer<T extends Created>(candidate: T, current: T): boolean {
   return (
     candidate.createdAt > current.createdAt ||

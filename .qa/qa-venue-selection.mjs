@@ -2,8 +2,8 @@
 import { runRelayScreenScenario } from './relay-screen-scenario.mjs';
 
 try {
-  runRelayScreenScenario({
-    flow: 'maestro/flows/05-venue-selection.yaml',
+  await runRelayScreenScenario({
+    flow: 'e2e/flows/05-venue-selection.ad',
     scenario: 'venue-selection',
   });
 } catch (error) {

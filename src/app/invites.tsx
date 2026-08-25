@@ -60,7 +60,7 @@ function OptionField({
         accessibilityLabel={`${label}: ${valueLabel}`}
         disabled={disabled}
         onPress={() => setOpen(true)}
-        style={({ pressed }) => [styles.select, pressed && styles.pressed, disabled && styles.disabled]}
+        style={[styles.select, disabled && styles.disabled]}
       >
         <Text style={styles.selectValue}>{valueLabel}</Text>
         <MaterialCommunityIcons name="chevron-down" size={20} color={colors.inkMuted} />
@@ -79,7 +79,7 @@ function OptionField({
                   onSelect(option);
                   setOpen(false);
                 }}
-                style={({ pressed }) => [styles.modalOption, pressed && styles.pressed]}
+                style={styles.modalOption}
               >
                 <Text style={styles.modalOptionLabel}>{option.label}</Text>
                 {option.label === valueLabel ? (
@@ -135,7 +135,14 @@ function ResultPanel({ state, venueHost, onShare, onCopy, copied }: {
           <Text style={styles.venueMeta}>Invite signed by this venue&rsquo;s service</Text>
         </View>
       </View>
-      <View testID="invite-qr" style={styles.qrFrame}>
+      <View
+        testID="invite-qr"
+        collapsable={false}
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel="Invite QR code"
+        style={styles.qrFrame}
+      >
         <QRCode value={invite.redeemUrl} size={176} color={colors.night} backgroundColor={colors.white} />
       </View>
       <View style={styles.badgeRow}>
@@ -287,20 +294,24 @@ function InvitesWorkspace() {
 
   return (
     <View style={styles.workspace}>
-      <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, !phone && styles.scrollRow]}>
-        {phone ? (
-          <>
+      {phone ? (
+        <>
+          <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
             {configPanel}
             {resultPanel}
-          </>
-        ) : (
-          <>
-            <View style={styles.column}>{configPanel}</View>
-            <View style={styles.column}>{resultPanel}</View>
-          </>
-        )}
-      </ScrollView>
-      {phone ? <View style={styles.stickyFooter}>{createButton}</View> : null}
+          </ScrollView>
+          <View style={styles.stickyFooter}>{createButton}</View>
+        </>
+      ) : (
+        <View style={styles.scrollRow}>
+          <ScrollView style={styles.column} contentContainerStyle={styles.columnContent}>
+            {configPanel}
+          </ScrollView>
+          <ScrollView style={styles.column} contentContainerStyle={styles.columnContent}>
+            {resultPanel}
+          </ScrollView>
+        </View>
+      )}
     </View>
   );
 }
@@ -308,16 +319,17 @@ function InvitesWorkspace() {
 export default function InvitesRoute() {
   const router = useRouter();
   const { venue, restoring } = useVenue();
+  const breakpoint = useBreakpoint();
 
   return (
     <SafeAreaView testID="invites-screen" style={styles.screen} edges={["top", "right", "bottom", "left"]}>
       <AppShell active="invites" permissions={ADMIN_PERMISSIONS}>
-        <View style={styles.container}>
+        <View style={[styles.container, breakpoint === "phone" && styles.containerPhone]}>
           <ScreenTitle
             title="Invites"
             description={
               venue
-                ? `Bring trusted people into ${venue.relayUrl.replace(/^wss?:\/\//, "")} with a clear role from the start.`
+                ? "Bring trusted people into this venue with a clear role from the start."
                 : "No venue selected"
             }
           />
@@ -343,12 +355,14 @@ export default function InvitesRoute() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
-  container: { flex: 1, padding: 24 },
-  workspace: { flex: 1 },
+  container: { flex: 1, minHeight: 0, padding: 24, maxWidth: 1180, width: "100%", alignSelf: "center" },
+  containerPhone: { paddingHorizontal: 16, paddingTop: 18 },
+  workspace: { flex: 1, minHeight: 0 },
   scroll: { flex: 1 },
   scrollContent: { gap: 16, paddingBottom: 32 },
-  scrollRow: { flexDirection: "row", alignItems: "flex-start", gap: 20 },
-  column: { flex: 1 },
+  scrollRow: { flex: 1, flexDirection: "row", alignItems: "stretch", gap: 20, minHeight: 0 },
+  column: { flex: 1, minWidth: 0, minHeight: 0 },
+  columnContent: { paddingBottom: 32 },
   center: { flex: 1, justifyContent: "center" },
   loadingText: { color: colors.inkMuted, fontSize: 15, lineHeight: 22, textAlign: "center" },
   configPanel: { gap: 18 },

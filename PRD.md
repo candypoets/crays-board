@@ -711,7 +711,7 @@ Reuse the `crays-rn` baseline unless a Board requirement demands otherwise:
 - `@candypoets/nipworker/hooks` and `/utils` for subscriptions, publishing, narrowing, tags, and FlatBuffer iteration;
 - Expo SecureStore, safe-area context, screens, Reanimated, SVG, and vector icons;
 - Jest and React Native Testing Library;
-- Maestro for public on-device flows;
+- native Agent Device `.ad` scripts for public on-device flows;
 - the real Nuts coordinator/relay QA harness for protocol verification.
 
 Expected Board-specific additions include native camera/scanning, image selection/manipulation, and secure browser/auth-session handoff. Dependency selection happens during implementation and must be compatible with Expo prebuild and the native `nipworker` development client.
@@ -773,13 +773,13 @@ The north-star operational measure is **confirmed service actions per active ven
 
 ## 17. Screen delivery and QA contract
 
-The natural-language test inventory and scenario-writing contract live in [`docs/testing/QA_WORKFLOWS.md`](docs/testing/QA_WORKFLOWS.md). The proposed executable harness boundary and rollout live in [`docs/architecture/qa-harness.md`](docs/architecture/qa-harness.md). Together they define what must be proved before individual Maestro and `.qa` files are implemented.
+The natural-language test inventory and scenario-writing contract live in [`docs/testing/QA_WORKFLOWS.md`](docs/testing/QA_WORKFLOWS.md). The executable harness boundary and rollout live in [`docs/architecture/qa-harness.md`](docs/architecture/qa-harness.md). Together they define what must be proved before individual Agent Device `.ad` and `.qa` files are implemented.
 
 Every screen/workflow implementation must include in the same change:
 
 1. a screen spec under `docs/screens/` covering entry, states, navigation, accessibility, failures, permissions, and relay/service behavior;
 2. deterministic pure-logic/component tests;
-3. a screen-specific Maestro flow;
+3. a screen-specific Agent Device `.ad` flow;
 4. a named `.qa/qa-<screen-or-workflow>.mjs` lifecycle scenario;
 5. independent relay/service verification after UI exercise for every protocol claim;
 6. scoped teardown in `finally`, including exact relays, volumes, helpers, app state, and scenario files owned by the run.
@@ -791,7 +791,7 @@ provision isolated real venue relay
   -> wait for signed relay round-trip
   -> seed signed fixtures
   -> launch the native development client
-  -> exercise public UI with Maestro
+  -> exercise public UI with Agent Device
   -> query relay/service truth independently
   -> verify exact kind, signer, tags, transitions, idempotency, and forbidden writes
   -> tear down exact owned state
@@ -799,9 +799,9 @@ provision isolated real venue relay
 
 UI text or an in-memory JavaScript store is never sufficient proof that an order, menu item, role, event, invite, or check-in succeeded.
 
-`.qa` is an orchestration layer, not a replacement for Jest, React Native Testing Library, or Maestro. Pure tests prove deterministic logic, component tests prove local rendering and interaction states, Maestro proves behavior through the public native UI, and `.qa` proves that the UI caused or consumed the correct external truth. A scenario should use the cheapest layer capable of proving a claim and add real-relay/service verification only where the claim crosses that boundary.
+`.qa` is an orchestration layer, not a replacement for Jest, React Native Testing Library, or Agent Device. Pure tests prove deterministic logic, component tests prove local rendering and interaction states, Agent Device proves behavior through the public native UI, and `.qa` proves that the UI caused or consumed the correct external truth. A scenario should use the cheapest layer capable of proving a claim and add real-relay/service verification only where the claim crosses that boundary.
 
-The structural QA gate must maintain a registry mapping every screen contract to an existing Maestro flow and named `.qa` runner. A new screen contract without both executable artifacts fails the gate before device testing begins.
+The structural QA gate must maintain a registry mapping every screen contract to an existing Agent Device flow and named `.qa` runner. A new screen contract without both executable artifacts fails the gate before device testing begins.
 
 Create venue additionally requires a failure-injection QA scenario for each durable boundary: before coordinator acceptance, after relay allocation, after readiness, after directory publication, and after profile publication. Each rerun must prove that at most one relay belongs to the stable creation attempt and that pre-existing admin relay-set entries survive.
 
@@ -809,7 +809,7 @@ Create venue additionally requires a failure-injection QA scenario for each dura
 
 | Target | Automated expectation |
 | --- | --- |
-| 11-inch 16:10 Android tablet AVD, landscape | Primary complete Maestro suite and screenshots |
+| 11-inch 16:10 Android tablet AVD, landscape | Primary complete Agent Device suite and screenshots |
 | Same tablet AVD, portrait | Navigation, forms, scanner handoff, rotation/lifecycle suite |
 | 1080×2400 Android phone AVD | Core Home, Orders, Menu, Events, More, and mutation flows |
 | iPad simulator, landscape/portrait | Layout, keyboard, safe area, camera fallback, and smoke suite when macOS runner is available |

@@ -4,21 +4,42 @@ Covers QA_WORKFLOWS PEOPLE-01, PEOPLE-02, PEOPLE-04, PEOPLE-05, ROLE-01 (edit pa
 
 ## Purpose
 
-Prove that the People list is derived from venue relay truth — root admins from NIP-11 plus holders of kind 8 role/membership awards — with the three deterministic statuses, and that the three staff mutations land as exact protocol events: membership revocation (kind 5 referencing the award id), role edit (same-d 30009 with the final permission set), and role assignment (kind 8 with exact `a`/`p`). Every mutation is verified against the relay independently, never from rendered text alone.
+Prove that the People list is derived from venue relay truth — community
+admins from the root-signed NIP-97 anchor plus holders of valid kind `8`
+role/membership awards — with the three deterministic statuses, and that the
+three staff mutations land as exact protocol events: membership revocation
+(kind `5` referencing the award id), role edit (same-`d` kind `30009` with the
+final permission set), and role assignment (kind `8` with exact `a`/`p` and
+query hints). Every mutation is verified against the relay independently,
+never from rendered text alone.
 
 ## Persona and permission
 
-Staff identity (QA admin key, a root venue authority holding every permission) on an isolated venue relay provisioned for the run. Identity is installed only through the dev-only `craysboard://qa-seed` deep link; the flow then deep-links to `/people`.
+Staff identity (QA admin key named by the root-signed community anchor and
+holding every permission) on an isolated venue relay provisioned for the run.
+Identity is installed only through the dev-only `craysboard://qa-seed` deep
+link; the flow then deep-links to `/people`.
 
 ## Starting truth
 
-- Isolated relay `craysboardqa-venue-<run>` with the standard venue fixture family (venue profile `30078`, sellable product `30009`, issuer-signed product award) plus the people fixtures, each signed by its proper authority and round-tripped:
-  - role definition `30009` / `d=qa-role-<run>` ("QA Events host", `type=role`, `t=role`, permissions `events` + `invites`, admin-signed);
-  - membership definition `30009` / `d=qa-membership-<run>` (`type=membership`, admin-signed);
+- Isolated relay `craysboardqa-venue-<run>` with its NIP-11 root key,
+  root-signed `31727` community anchor, root-authored invite-membership
+  definition, and standard venue fixture family (profile `30078`, sellable
+  product listing `30402`, delegated-issuer-signed product award), plus the
+  people fixtures, each signed by its proper authority and round-tripped:
+  - role definition `30009` / `d=qa-role-<run>` ("QA Events host",
+    `t=role`, permissions `31923/write` + `invites`, admin-signed; no legacy
+    `type` tag);
+  - sellable membership definition `30009` / `d=qa-membership-<run>`
+    (`t=membership`, recurring `price` tuple, admin-signed);
   - active membership award (kind 8, issuer-signed) to `users[0]` ("QA Active Member" via its own kind 0);
   - membership award expiring in 10 days to `users[1]` ("QA Expiring Member");
   - membership award to `users[2]` ("QA Expired Member") already revoked by an admin-signed kind 5 — the deterministic Expired fixture (an already-past NIP-40 expiration would be dropped by the relay on write, so the fixture uses revocation; both grant nothing and leave the person Expired);
-  - non-sellable gate badge `30009` / `d=members` (`type=badge`) plus kind 8 grants to `users[0..2]` — the relay write gate accepts non-admin writes only from current holders of the required badge, so the member-signed profiles below are rejected without it; the people projection ignores `type=badge` definitions;
+  - a temporary admin-authored `t=role` definition granting
+    `permission=0/write`, plus admin-signed awards to `users[0..2]`; this
+    capability lets those users publish their own kind `0` profiles and is
+    revoked immediately afterward. Membership is not treated as a blanket
+    relay-write bypass;
   - kind 0 profiles for the venue admin and the three fixture users.
 - App installed, state cleared, Metro on 8090, one Android device.
 
@@ -35,9 +56,19 @@ Open the seed deep link, then `craysboard://people`. Assert the three statuses. 
 
 ## Authoritative result
 
-- Exactly one app-written kind `5` references the seeded active award id via an `e` tag (with `k=8`), signed by the staff/admin key, signature valid, `created_at >= award.created_at`. The seeded fixture revocation for `users[2]` is the only other kind 5 — total kind 5 count is exactly two.
-- Exactly one new kind `8` role assignment carries `a=30009:<admin>:qa-role-<run>` and `p=<users[1] pubkey>` exactly, signed by the staff/admin key, with no `expiration` tag (permanent).
-- The latest `30009` at `d=qa-role-<run>` keeps the same `d`, `type=role`, and `t=role`, and its repeated `permission` tags are exactly {posts, events, invites} — the original set plus the one toggled permission. Signed by the staff/admin key.
+- Exactly one app-written kind `5` references the seeded active award id via
+  an `e` tag (with `k=8`), signed by the staff/admin key, signature valid, and
+  `created_at >= award.created_at`. Four other kind `5` fixtures are explicitly
+  recorded: the expired membership revocation and three temporary
+  profile-writer cleanup revocations. Total kind `5` count is exactly five.
+- Exactly one new kind `8` role assignment carries
+  `a=30009:<admin>:qa-role-<run>`, `p=<users[1] pubkey>`, and the NIP-97
+  `t=30009`/`t=role` query hints, signed by the staff/admin key, with no
+  `expiration` tag (permanent).
+- The current `30009` at `d=qa-role-<run>` keeps the same `d`, is classified
+  only by `t=role`, and its repeated `permission` tags are exactly
+  `1/write`, `31923/write`, and `invites` — posts, events, and invites. It is
+  signed by the staff/admin key and carries no legacy `type` tag.
 - Logcat `[crays-board-person]` markers project each visible person; `[crays-board-revoke]`, `[crays-board-role]`, and `[crays-board-assign]` carry the same event ids that landed on the relay.
 
 ## Forbidden result
@@ -48,7 +79,13 @@ Open the seed deep link, then `craysboard://people`. Assert the three statuses. 
 
 ## Lifecycle boundary
 
-Statuses and mutations are relay-derived: the people projection folds kinds 0/5/8/30009 from the venue relay subscription (`board_people_<relay>`, EOSE-as-loaded, unsubscribe on unmount/background), so a relaunch re-derives the same list — including the post-revocation Expired status — without local memory. A confirmed mutation is shown as such only after relay ack; the ack'd revocation folds in immediately and is independently confirmed by the relay echo.
+Statuses and mutations are relay-derived: the people projection folds kinds
+`0`/`5`/`8`/`30009`/`31727` from the venue relay subscription
+(`board_people_<relay>`, EOSE-as-loaded, unsubscribe on unmount/background),
+so a relaunch re-derives the same list — including the post-revocation Expired
+status — without local memory. A confirmed mutation is shown only after relay
+ack; the acknowledged revocation folds in immediately and is independently
+confirmed by the relay echo.
 
 ## Cleanup
 

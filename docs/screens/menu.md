@@ -4,7 +4,12 @@ Covers QA_WORKFLOWS MENU-01 (sectioned projection + search/section filters), MEN
 
 ## Purpose
 
-Prove that sellable food/drink definitions on the venue relay project as an ordered, sectioned catalog; that one deliberate availability toggle and one name edit each republish the **same** addressable `d` as the latest kind `30009` — verified independently on the relay, never from rendered text alone; and that an item published by a different trusted key stays visible but non-editable, with no write attempted against it.
+Prove that sellable kind `30402` food/drink listings on the venue relay project
+as an ordered, sectioned catalog; that one deliberate availability toggle and
+one name edit each republish the **same** addressable `d` — verified
+independently on the relay, never from rendered text alone; and that an item
+published by a different anchor admin stays visible but non-editable, with no
+write attempted against it.
 
 ## Persona and permission
 
@@ -12,10 +17,13 @@ Staff identity (QA admin key) with venue authority (`store` permission set) on a
 
 ## Starting truth
 
-- Isolated relay `craysboardqa-venue-<run>` with the base fixture family (venue profile `30078`, one sellable product + award for the shared harness verifier) plus three menu definitions with deterministic `d` values:
+- Isolated relay `craysboardqa-venue-<run>` with the NIP-11/root-signed
+  `31727` trust bootstrap and the base fixture family (venue profile `30078`,
+  one sellable `30402` product + award for the shared verifier) plus three
+  `30402` menu listings with deterministic `d` values:
   - `qa-menu-soup` — food, "QA Tomato soup", 6.50 EUR, section `Mains`, position 1, `available` (admin-signed; edited by the flow);
   - `qa-menu-espresso` — drink, "QA Espresso", 3.00 EUR, section `Drinks`, position 1, `available` (admin-signed; toggled by the flow);
-  - `qa-menu-foreign` — drink, "QA Foreign lemonade", 4.20 EUR, section `Drinks`, position 2, `available` (**signed by the relay's badge-issuer key, not the admin**).
+  - `qa-menu-foreign` — drink, "QA Foreign lemonade", 4.20 EUR, section `Drinks`, position 2, `available` (**signed by a second admin named by the community anchor, not the active admin**).
 - App installed, state cleared, Metro on 8090, one Android device.
 
 ## User action
@@ -32,9 +40,16 @@ Open the seed deep link (lands on Orders), open `craysboard://menu`, wait for th
 
 ## Authoritative result
 
-- The venue relay's latest kind `30009` for `d=qa-menu-espresso` carries `availability=unavailable`, is signed by the admin key, and there is exactly one admin event for that `d` (no duplicate `d`).
-- The latest `30009` for `d=qa-menu-soup` carries `name="QA Roasted tomato soup"`, unchanged `price=6.50`/`currency=EUR`/`section=Mains`, same `d`, admin-signed, exactly one admin event for that `d`.
-- For `d=qa-menu-foreign` there is **no** event signed by the admin key at all; the badge-issuer-signed original remains the only event for that `d`.
+- The venue relay's current kind `30402` for `d=qa-menu-espresso` carries
+  `availability=unavailable`, `title="QA Espresso"`, and
+  `price=["3.00","EUR"]`, is signed by the active admin, and there is exactly
+  one retained active-admin event for that `d`.
+- The current `30402` for `d=qa-menu-soup` carries
+  `title="QA Roasted tomato soup"`, unchanged
+  `price=["6.50","EUR"]`/`section=Mains`/`position=1`, the same `d`, and the
+  active-admin signer.
+- For `d=qa-menu-foreign` there is **no** event signed by the active admin; the
+  second-anchor-admin original remains the only event for that `d`.
 - Logcat `[crays-board-menu]` markers project every item (`d`, `address`, `name`, `availability`); `[crays-board-menu-definition]` markers carry the exact event ids that landed on the relay.
 
 ## Forbidden result

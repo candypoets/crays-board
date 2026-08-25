@@ -1,0 +1,40 @@
+# ORDER-06…12 — complete advance, decline, and cancel ladders on tablet.
+context platform=android timeout=720000
+env APP_ID=life.crays.board
+
+open "craysboard://qa-handoff?target=orders" --metro-port 8090
+wait "id=\"orders-screen\"" 60000
+wait "id=\"order-card-${AWARD_ID_PREFIX}\"" 30000
+click "id=\"order-action-button-${AWARD_ID_PREFIX}\""
+wait "id=\"order-status-${AWARD_ID_PREFIX}-accepted\"" 45000
+click "id=\"order-action-button-${AWARD_ID_PREFIX}\""
+wait "id=\"order-status-${AWARD_ID_PREFIX}-processing\"" 45000
+click "id=\"order-action-button-${AWARD_ID_PREFIX}\""
+wait "id=\"order-status-${AWARD_ID_PREFIX}-ready\"" 45000
+click "id=\"order-action-button-${AWARD_ID_PREFIX}\""
+swipe 1400 850 1400 350
+wait "id=\"order-status-${AWARD_ID_PREFIX}-fulfilled\"" 45000
+screenshot "${AD_ARTIFACTS}/11-orders-ladder-advance-served.png"
+
+swipe 1400 350 1400 850
+wait "id=\"order-decline-button-${DECLINE_AWARD_ID_PREFIX}\"" 15000
+press "id=\"order-decline-button-${DECLINE_AWARD_ID_PREFIX}\"" --double-tap
+swipe 1400 850 1400 350
+wait "id=\"order-status-${DECLINE_AWARD_ID_PREFIX}-cancelled\"" 45000
+screenshot "${AD_ARTIFACTS}/11-orders-ladder-declined.png"
+
+swipe 1400 350 1400 850
+wait "id=\"order-action-button-${CANCEL_AWARD_ID_PREFIX}\"" 15000
+click "id=\"order-action-button-${CANCEL_AWARD_ID_PREFIX}\""
+wait "id=\"order-status-${CANCEL_AWARD_ID_PREFIX}-accepted\"" 45000
+click "id=\"order-cancel-button-${CANCEL_AWARD_ID_PREFIX}\""
+wait text "Cancel this order?" 10000
+click "label=\"Keep order\""
+click "id=\"order-cancel-button-${CANCEL_AWARD_ID_PREFIX}\""
+wait text "Yes, cancel order" 10000
+screenshot "${AD_ARTIFACTS}/11-orders-ladder-cancel-dialog.png"
+click "label=\"Yes, cancel order\""
+swipe 1400 850 1400 350
+wait "id=\"order-status-${CANCEL_AWARD_ID_PREFIX}-cancelled\"" 45000
+screenshot "${AD_ARTIFACTS}/11-orders-ladder-final.png"
+close

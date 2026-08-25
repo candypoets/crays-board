@@ -1,0 +1,31 @@
+# INVITE-01/03/04 — configure, create once, and verify the QR result on phone.
+context platform=android timeout=480000
+env APP_ID=life.crays.board
+
+open "craysboard://qa-handoff?target=invites" --metro-port 8090
+wait "id=\"invites-screen\"" 30000
+click "id=\"invite-expiry-field\""
+wait "id=\"invite-option-expiry-7d\"" 10000
+click "id=\"invite-option-expiry-7d\""
+click "id=\"invite-duration-field\""
+wait "id=\"invite-option-duration-90d\"" 10000
+click "id=\"invite-option-duration-90d\""
+scroll down 0.6
+wait "id=\"invite-redemptions-field\"" 15000
+click "id=\"invite-redemptions-field\""
+wait "id=\"invite-option-redemptions-5\"" 10000
+click "id=\"invite-option-redemptions-5\""
+scroll down 0.7
+wait "id=\"invite-create-button\"" 15000
+press "id=\"invite-create-button\"" --double-tap
+wait "id=\"invite-result-panel\"" 45000
+scroll down 0.35
+wait "id=\"invite-qr\"" 20000
+find text "Valid for 7 days" exists
+find text "5 uses" exists
+find text "90 days membership" exists
+is visible "id=\"invite-share-button\""
+click "id=\"invite-copy-button\""
+wait text "Copied" 10000
+screenshot "${AD_ARTIFACTS}/50-invites-result.png"
+close

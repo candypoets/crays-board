@@ -107,21 +107,34 @@ describe("validateMembershipDraft", () => {
 });
 
 describe("buildMembershipDefinition", () => {
-  it("builds the §3.4 sellable membership tag set at the stable d", () => {
+  it("builds the NIP-97 membership tag set at the stable d", () => {
     const template = buildMembershipDefinition(validMembership);
     expect(template.kind).toBe(30009);
-    const map = tags(template);
-    expect(map.get("d")).toBe("qa-membership-1");
-    expect(map.get("type")).toBe("membership");
-    expect(map.get("name")).toBe("Community member");
-    expect(map.get("price")).toBe("12.00");
-    expect(map.get("currency")).toBe("EUR");
-    expect(map.get("period")).toBe("monthly");
-    expect(map.get("availability")).toBe("available");
-    expect(map.get("description")).toBe("Support the venue.");
-    expect(template.tags.filter((tag) => tag[0] === "t").map((tag) => tag[1])).toEqual(
-      expect.arrayContaining(["membership", "sellable"]),
-    );
+    expect(template.tags).toEqual([
+      ["d", "qa-membership-1"],
+      ["t", "membership"],
+      ["name", "Community member"],
+      ["price", "12.00", "EUR", "month"],
+      ["availability", "available"],
+      ["description", "Support the venue."],
+    ]);
+  });
+
+  it("maps billing periods to price-tag recurrence: year maps, one-time is absent", () => {
+    const priceTag = (period: (typeof validMembership)["period"]) =>
+      buildMembershipDefinition({ ...validMembership, period }).tags.find((tag) => tag[0] === "price");
+    expect(priceTag("monthly")).toEqual(["price", "12.00", "EUR", "month"]);
+    expect(priceTag("yearly")).toEqual(["price", "12.00", "EUR", "year"]);
+    expect(priceTag("one-time")).toEqual(["price", "12.00", "EUR"]);
+  });
+
+  it("never emits the old type/sellable/period/currency grammar", () => {
+    const template = buildMembershipDefinition(validMembership);
+    const names = template.tags.map((tag) => tag[0]);
+    expect(names).not.toContain("type");
+    expect(names).not.toContain("period");
+    expect(names).not.toContain("currency");
+    expect(template.tags.filter((tag) => tag[0] === "t")).toEqual([["t", "membership"]]);
   });
 
   it("keeps the same d on availability flips (MEMBER-02)", () => {

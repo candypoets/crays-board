@@ -5,20 +5,20 @@ import { resolve } from 'node:path';
 const root = resolve(new URL('..', import.meta.url).pathname);
 
 // Every screen spec under docs/screens/ is registered here with exactly one
-// Maestro flow and one named .qa lifecycle runner.
+// native Agent Device flow and one named .qa lifecycle runner.
 const contracts = [
-  ['docs/screens/check-in.md', 'maestro/flows/31-check-in.yaml', '.qa/qa-check-in.mjs'],
-  ['docs/screens/create-venue.md', 'maestro/flows/70-create-venue.yaml', '.qa/qa-create-venue.mjs'],
-  ['docs/screens/events.md', 'maestro/flows/30-events.yaml', '.qa/qa-events.mjs'],
-  ['docs/screens/home.md', 'maestro/flows/80-home.yaml', '.qa/qa-home.mjs'],
-  ['docs/screens/invites.md', 'maestro/flows/50-invites.yaml', '.qa/qa-invites.mjs'],
-  ['docs/screens/menu.md', 'maestro/flows/20-menu.yaml', '.qa/qa-menu.mjs'],
-  ['docs/screens/orders-ladder.md', 'maestro/flows/11-orders-ladder.yaml', '.qa/qa-orders-ladder.mjs'],
-  ['docs/screens/orders.md', 'maestro/flows/10-orders.yaml', '.qa/qa-orders.mjs'],
-  ['docs/screens/people.md', 'maestro/flows/40-people.yaml', '.qa/qa-people.mjs'],
-  ['docs/screens/settings.md', 'maestro/flows/60-settings.yaml', '.qa/qa-settings.mjs'],
-  ['docs/screens/venue-selection.md', 'maestro/flows/05-venue-selection.yaml', '.qa/qa-venue-selection.mjs'],
-  ['docs/screens/welcome.md', 'maestro/flows/00-welcome.yaml', '.qa/qa-welcome.mjs'],
+  ['docs/screens/check-in.md', 'e2e/flows/31-check-in.{profile}.ad', '.qa/qa-check-in.mjs'],
+  ['docs/screens/create-venue.md', 'e2e/flows/70-create-venue.ad', '.qa/qa-create-venue.mjs'],
+  ['docs/screens/events.md', 'e2e/flows/30-events.{profile}.ad', '.qa/qa-events.mjs'],
+  ['docs/screens/home.md', 'e2e/flows/80-home.{profile}.ad', '.qa/qa-home.mjs'],
+  ['docs/screens/invites.md', 'e2e/flows/50-invites.{profile}.ad', '.qa/qa-invites.mjs'],
+  ['docs/screens/menu.md', 'e2e/flows/20-menu.{profile}.ad', '.qa/qa-menu.mjs'],
+  ['docs/screens/orders-ladder.md', 'e2e/flows/11-orders-ladder.{profile}.ad', '.qa/qa-orders-ladder.mjs'],
+  ['docs/screens/orders.md', 'e2e/flows/10-orders.ad', '.qa/qa-orders.mjs'],
+  ['docs/screens/people.md', 'e2e/flows/40-people.{profile}.ad', '.qa/qa-people.mjs'],
+  ['docs/screens/settings.md', 'e2e/flows/60-settings.{profile}.ad', '.qa/qa-settings.mjs'],
+  ['docs/screens/venue-selection.md', 'e2e/flows/05-venue-selection.ad', '.qa/qa-venue-selection.mjs'],
+  ['docs/screens/welcome.md', 'e2e/flows/00-welcome.ad', '.qa/qa-welcome.mjs'],
 ];
 
 const documented = readdirSync(resolve(root, 'docs/screens'))
@@ -33,12 +33,15 @@ if (JSON.stringify(documented) !== JSON.stringify(registered)) {
 }
 
 for (const [doc, flow, runner] of contracts) {
-  for (const file of [doc, flow, runner]) {
+  const files = flow.includes('{profile}')
+    ? [doc, flow.replace('{profile}', 'phone'), flow.replace('{profile}', 'tablet'), runner]
+    : [doc, flow, runner];
+  for (const file of files) {
     const path = resolve(root, file);
     if (!existsSync(path)) throw new Error(`Missing screen contract artifact: ${path}`);
   }
 }
 
 console.log(
-  `CRAYS BOARD SCREEN CONTRACTS PASS: ${contracts.length} specs each have a Maestro flow and named .qa lifecycle`,
+  `CRAYS BOARD SCREEN CONTRACTS PASS: ${contracts.length} specs each have native Agent Device flow coverage and a named .qa lifecycle`,
 );

@@ -1,13 +1,14 @@
 import type { EventTemplate } from "nostr-tools";
 
-import { KIND_DEFINITION } from "@/nostr/protocol";
+import { KIND_LISTING } from "@/nostr/protocol";
 
 import type { MenuAvailability, MenuItem } from "./fold";
 
 /**
- * Menu definition builders per venue-commerce-nip §3.1/§3.2 and PRD §8.5.
+ * Menu definition builders per NIP-97 (spec of record ~/nips/97.md) on top of
+ * the NIP-99 classified listing grammar, kind 30402.
  *
- * Every sellable hospitality product is an addressable kind 30009 event.
+ * Every sellable hospitality product is an addressable kind 30402 listing.
  * Editing any field — including availability, archive, and restore — reuses
  * the same `d` and resolves as the latest addressable event; a builder never
  * mints a new `d` for an existing item. Only the original publishing key may
@@ -31,7 +32,7 @@ const CURRENCY_PATTERN = /^[A-Z]{3}$/;
 export const AVAILABILITY_VALUES: ReadonlySet<string> = new Set(["available", "unavailable", "archived"]);
 
 /**
- * §3.1 client-side validation: name at least two characters, price a positive
+ * Client-side validation: name at least two characters, price a positive
  * decimal, currency a three-letter uppercase ISO-4217 code. Returns a map of
  * field errors; an empty map means the draft may be published.
  */
@@ -58,14 +59,18 @@ export type MenuDefinitionParams = {
   /** Product class: food, drink, merchandise, or generic. */
   type: string;
   draft: MenuDraft;
-  /** Deterministic ordering inside the section (§3.2); ties break by d. */
+  /** Deterministic ordering inside the section; ties break by d. */
   position?: number;
 };
 
 /**
- * Builds the complete kind 30009 tag set for one product definition. Because
- * addressable replacement swaps the whole event, the template always carries
- * the full intended tag set, not a diff. Throws on any §3.1 validation
+ * Builds the complete kind 30402 tag set for one product listing: `d`,
+ * `title`, a single NIP-99 `price` tag (amount + currency), `availability`,
+ * and `product_kind`, plus optional `section`, `position`, and `summary`.
+ * Sellability is the well-formed price tag itself (NIP-97), and 30402
+ * defaults to one use per award, so no sellable/max_uses markers exist.
+ * Because addressable replacement swaps the whole event, the template always
+ * carries the full intended tag set, not a diff. Throws on any validation
  * failure so an invalid draft can never reach the signer.
  */
 export function buildMenuDefinition({ d, type, draft, position }: MenuDefinitionParams): EventTemplate {
@@ -82,22 +87,17 @@ export function buildMenuDefinition({ d, type, draft, position }: MenuDefinition
   const section = draft.section.trim();
   const tags: string[][] = [
     ["d", d],
-    ["type", type],
-    ["t", type],
-    ["t", "sellable"],
-    ["name", draft.name.trim()],
-    ["price", draft.price.trim()],
-    ["currency", draft.currency.trim()],
-    // Products are always single-use (§3.2).
-    ["max_uses", "1"],
+    ["title", draft.name.trim()],
+    ["price", draft.price.trim(), draft.currency.trim()],
     ["availability", draft.availability],
+    ["product_kind", type],
   ];
   if (section) tags.push(["section", section]);
   if (position !== undefined) tags.push(["position", String(position)]);
-  if (description) tags.push(["description", description]);
+  if (description) tags.push(["summary", description]);
 
   return {
-    kind: KIND_DEFINITION,
+    kind: KIND_LISTING,
     created_at: Math.floor(Date.now() / 1000),
     content: "",
     tags,
@@ -105,9 +105,9 @@ export function buildMenuDefinition({ d, type, draft, position }: MenuDefinition
 }
 
 /**
- * Rebuilds an existing item's definition with a new draft — the §3.1 update
- * rule. The addressable identity (`d`, product type, position) is preserved
- * from the relay projection; only the drafted fields change.
+ * Rebuilds an existing item's listing with a new draft — the addressable
+ * update rule. The addressable identity (`d`, product kind, position) is
+ * preserved from the relay projection; only the drafted fields change.
  */
 export function buildMenuDefinitionUpdate(item: MenuItem, draft: MenuDraft): EventTemplate {
   return buildMenuDefinition({
@@ -123,8 +123,8 @@ export function draftFromItem(item: MenuItem): MenuDraft {
   return {
     name: item.name,
     description: item.description ?? "",
-    price: item.price ?? "",
-    currency: item.currency ?? "",
+    price: item.price,
+    currency: item.currency,
     section: item.section ?? "",
     availability: item.availability,
   };

@@ -1,0 +1,30 @@
+# HOME-01/02/03 — project live phone summaries and navigate to Orders.
+context platform=android timeout=480000
+env APP_ID=life.crays.board
+
+open "craysboard://qa-handoff?target=home" --metro-port 8090
+wait "id=\"home-screen\"" 60000
+wait text "Live" 30000
+is visible "id=\"home-venue-name\""
+wait "id=\"home-orders-card\"" 30000
+find text "3 open orders" exists
+find text "New 2 · Accepted 1" exists
+find text "Oldest wait" exists
+is visible "id=\"home-event-card\""
+is visible "id=\"home-checkin-button\""
+is visible "id=\"home-menu-card\""
+find text "1 item unavailable" exists
+is visible "id=\"home-members-card\""
+find text "1 active member" exists
+screenshot "${AD_ARTIFACTS}/80-home-summary.png"
+scroll down 0.7
+wait text "1 expiring soon" 15000
+scroll down 0.7
+wait "id=\"home-action-role\"" 15000
+is visible "id=\"home-action-menu\""
+is visible "id=\"home-action-event\""
+is visible "id=\"home-action-invite\""
+click "id=\"tab-orders\""
+wait "id=\"orders-screen\"" 30000
+screenshot "${AD_ARTIFACTS}/80-home-orders-destination.png"
+close

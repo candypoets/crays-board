@@ -1,11 +1,20 @@
-import type { BoardOrder } from "@/orders/fold";
+import type { EntitlementType, Permission } from "@/access/nip97";
+import {
+  awardIssuerValid,
+  definitionAuthorTrusted,
+  revocationSignerValid,
+  statusSignerValid,
+  trustWithFulfillmentRoles,
+  type CommunityTrust,
+} from "@/access/trust";
+import type { PublishedOrderStatus } from "@/nostr/protocol";
 
 /**
  * Pure Home attention-summary projection per PRD §8.3 and QA_WORKFLOWS
- * HOME-01/HOME-02. Everything here is synchronous and fully unit-testable;
- * the subscription coordinator in useHomeSummary.ts only extracts plain
- * inputs from worker events, reuses the orders fold for the order stages, and
- * calls this.
+ * HOME-01/HOME-02, on NIP-97 shapes (spec of record: ~/nips/97.md).
+ * Everything here is synchronous and fully unit-testable; the subscription
+ * coordinator in useHomeSummary.ts only extracts plain inputs from worker
+ * events and calls this.
  *
  * Venue binding is owned by the caller: only events learned from the active
  * venue relay reach this projection.
@@ -13,12 +22,8 @@ import type { BoardOrder } from "@/orders/fold";
 
 /** NIP-52 timed calendar event (read-only on Home). */
 export const KIND_CALENDAR_EVENT = 31923;
-/** NIP-09 deletion/revocation referencing award ids. */
-export const KIND_DELETION = 5;
 
 export const MEMBER_EXPIRING_SOON_SECONDS = 30 * 24 * 60 * 60;
-
-const PRODUCT_TYPES: ReadonlySet<string> = new Set(["food", "drink", "merchandise", "generic"]);
 
 export type HomeProfileInput = {
   id: string;
@@ -30,12 +35,19 @@ export type HomeProfileInput = {
 };
 
 export type HomeDefinitionInput = {
-  /** `30009:<author>:<d>` address. */
+  /** `<kind>:<author>:<d>` address (30009 memberships, 30402 products/passes/tickets). */
   address: string;
   id: string;
-  type?: string;
+  authorPubkey: string;
+  /** `title` for 30402 listings, `name` for 30009 badge definitions. */
+  name?: string;
+  /** NIP-97 classification derived from the definition shape (never a `type` tag). */
+  type?: EntitlementType;
+  /** True when the definition carries a well-formed `price` tag. */
   sellable: boolean;
-  /** `availability` tag: available | unavailable | archived. */
+  /** Parsed NIP-97 grants when this is a role definition. */
+  permissions?: Permission[];
+  /** `availability` tag: available (default) | unavailable | archived. */
   availability?: string;
   createdAt: number;
 };
@@ -43,11 +55,30 @@ export type HomeDefinitionInput = {
 export type HomeAwardInput = {
   id: string;
   issuerPubkey: string;
+  /** `a` tag: the definition address this award references. */
   definitionAddress: string;
+  /** `p` tag: the holder the award was granted to. */
   holderPubkey: string;
+  /** `order:<order-ref>` fulfillment context (deriveOrderRef + orderContextKey). */
+  orderContextKey: string;
   createdAt: number;
   /** NIP-40 expiration, when present. */
   expiresAt?: number;
+};
+
+export type HomeStatusInput = {
+  id: string;
+  /** Event author; NIP-97 also admits resolved 37237/write role holders. */
+  signerPubkey: string;
+  /** Exact award/definition/holder binding from e/a/p. */
+  awardId: string;
+  definitionAddress: string;
+  holderPubkey: string;
+  /** Validated `d` context key: `order:<ref>` or `event:<coordinate>`. */
+  contextKey: string;
+  contextType: "order" | "event";
+  status: PublishedOrderStatus;
+  createdAt: number;
 };
 
 export type HomeCalendarEventInput = {
@@ -119,31 +150,36 @@ export type HomeSummary = {
 };
 
 export type HomeProjectionInput = {
-  /** Already-folded board orders (src/orders/fold projectOrders output). */
-  orders: BoardOrder[];
   profiles: HomeProfileInput[];
   definitions: HomeDefinitionInput[];
   awards: HomeAwardInput[];
+  statuses: HomeStatusInput[];
   calendarEvents: HomeCalendarEventInput[];
   deletions: HomeDeletionInput[];
-  /** Venue authorities + advertised badge issuer (see venue/trust.ts). */
-  trustedIssuers: ReadonlySet<string>;
+  /** NIP-97 trust resolved from the root-signed community anchor. */
+  trust: CommunityTrust;
   now: number;
 };
 
-/** Latest-addressable resolution per venue-commerce-nip §3.1. */
-export function latestByAddress<T extends { address: string; id: string; createdAt: number }>(
-  items: T[],
-): Map<string, T> {
-  const latest = new Map<string, T>();
-  for (const item of items) {
-    const previous = latest.get(item.address);
+/**
+ * Latest addressable definition per address, restricted to trusted
+ * definition authors (anchor admins plus the community root key — the
+ * node's `30009:<root>:members` invite definition must resolve).
+ */
+function trustedLatestDefinitions(
+  definitions: HomeDefinitionInput[],
+  trust: CommunityTrust,
+): Map<string, HomeDefinitionInput> {
+  const latest = new Map<string, HomeDefinitionInput>();
+  for (const definition of definitions) {
+    if (!definitionAuthorTrusted(definition.authorPubkey, trust)) continue;
+    const previous = latest.get(definition.address);
     if (
       !previous ||
-      item.createdAt > previous.createdAt ||
-      (item.createdAt === previous.createdAt && item.id > previous.id)
+      definition.createdAt > previous.createdAt ||
+      (definition.createdAt === previous.createdAt && definition.id > previous.id)
     ) {
-      latest.set(item.address, item);
+      latest.set(definition.address, definition);
     }
   }
   return latest;
@@ -164,10 +200,10 @@ function latestCalendarEvents(events: HomeCalendarEventInput[]): HomeCalendarEve
   return [...byD.values()];
 }
 
-function projectVenueName(profiles: HomeProfileInput[], trustedIssuers: ReadonlySet<string>): string | undefined {
+function projectVenueName(profiles: HomeProfileInput[], trust: CommunityTrust): string | undefined {
   let latest: HomeProfileInput | undefined;
   for (const profile of profiles) {
-    if (!trustedIssuers.has(profile.authorPubkey)) continue;
+    if (!definitionAuthorTrusted(profile.authorPubkey, trust)) continue;
     if (profile.d !== "nuts-community-profile") continue;
     if (
       !latest ||
@@ -180,13 +216,82 @@ function projectVenueName(profiles: HomeProfileInput[], trustedIssuers: Readonly
   return latest?.name;
 }
 
-function projectOrdersSummary(orders: BoardOrder[]): HomeSummary["orders"] {
+/**
+ * Order figures from NIP-97 shapes: one order per `order:<ref>` fulfillment
+ * context, opened by a valid purchase award (admins may award anything, the
+ * badge issuer only sellable definitions) for a sellable single-use product.
+ * The stage is the latest exactly-bound order-context status (NIP-97 resolution:
+ * latest created_at, lowest event id breaks ties) from a valid signer, or
+ * the implicit `pending` when no status exists. Event contexts are the
+ * check-in slice's truth and never count here.
+ */
+function projectOrdersSummary({
+  awards,
+  statuses,
+  definitions,
+  deletions,
+  trust,
+  now,
+}: {
+  awards: HomeAwardInput[];
+  statuses: HomeStatusInput[];
+  definitions: ReadonlyMap<string, HomeDefinitionInput>;
+  deletions: HomeDeletionInput[];
+  trust: CommunityTrust;
+  now: number;
+}): HomeSummary["orders"] {
+  // Awards sharing an order ref are one order; its placement time is the
+  // earliest award in the group.
+  const ordersByContext = new Map<string, { createdAt: number; awards: HomeAwardInput[] }>();
+  for (const award of awards) {
+    const definition = definitions.get(award.definitionAddress);
+    if (!definition) continue;
+    if (definition.type !== "product" || !definition.sellable) continue;
+    if (!awardIssuerValid({ issuer: award.issuerPubkey, sellable: definition.sellable, trust })) continue;
+    if (award.expiresAt !== undefined && award.expiresAt <= now) continue;
+    const revoked = deletions.some(
+      (deletion) =>
+        deletion.references.includes(award.id) &&
+        revocationSignerValid(deletion.authorPubkey, award.issuerPubkey, trust),
+    );
+    if (revoked) continue;
+    const previous = ordersByContext.get(award.orderContextKey);
+    if (previous) {
+      previous.awards.push(award);
+      if (award.createdAt < previous.createdAt) previous.createdAt = award.createdAt;
+    } else {
+      ordersByContext.set(award.orderContextKey, { createdAt: award.createdAt, awards: [award] });
+    }
+  }
+
   const byStage: HomeOrderStages = { pending: 0, accepted: 0, processing: 0, ready: 0 };
   let oldestWaitSeconds = 0;
-  for (const order of orders) {
-    if (order.status === "fulfilled" || order.status === "cancelled") continue;
-    byStage[order.status] += 1;
-    if (order.elapsedSeconds > oldestWaitSeconds) oldestWaitSeconds = order.elapsedSeconds;
+  for (const [contextKey, order] of ordersByContext) {
+    let latest: HomeStatusInput | undefined;
+    for (const status of statuses) {
+      if (status.contextType !== "order" || status.contextKey !== contextKey) continue;
+      if (!statusSignerValid(status.signerPubkey, trust)) continue;
+      const boundAward = order.awards.find(
+        (award) =>
+          status.awardId === award.id &&
+          status.definitionAddress === award.definitionAddress &&
+          status.holderPubkey === award.holderPubkey &&
+          status.createdAt >= award.createdAt,
+      );
+      if (!boundAward) continue;
+      if (
+        !latest ||
+        status.createdAt > latest.createdAt ||
+        (status.createdAt === latest.createdAt && status.id < latest.id)
+      ) {
+        latest = status;
+      }
+    }
+    const stage = latest?.status ?? "pending";
+    if (stage === "fulfilled" || stage === "cancelled") continue;
+    byStage[stage] += 1;
+    const wait = Math.max(0, now - order.createdAt);
+    if (wait > oldestWaitSeconds) oldestWaitSeconds = wait;
   }
   const open = byStage.pending + byStage.accepted + byStage.processing + byStage.ready;
   return { open, byStage, oldestWaitSeconds };
@@ -194,11 +299,11 @@ function projectOrdersSummary(orders: BoardOrder[]): HomeSummary["orders"] {
 
 function projectNextEvent(
   calendarEvents: HomeCalendarEventInput[],
-  trustedIssuers: ReadonlySet<string>,
+  trust: CommunityTrust,
   now: number,
 ): HomeNextEvent | undefined {
   const candidates = latestCalendarEvents(calendarEvents)
-    .filter((event) => trustedIssuers.has(event.authorPubkey))
+    .filter((event) => definitionAuthorTrusted(event.authorPubkey, trust))
     .filter((event) => {
       const happeningNow = event.startsAt <= now && event.endsAt !== undefined && event.endsAt > now;
       return event.startsAt > now || happeningNow;
@@ -215,27 +320,38 @@ function projectNextEvent(
   };
 }
 
-function projectMembers(
-  awards: HomeAwardInput[],
-  membershipAddresses: ReadonlySet<string>,
-  deletions: HomeDeletionInput[],
-  trustedIssuers: ReadonlySet<string>,
-  now: number,
-): HomeSummary["members"] {
-  const revoked = new Set<string>();
-  for (const deletion of deletions) {
-    if (!trustedIssuers.has(deletion.authorPubkey)) continue;
-    for (const reference of deletion.references) revoked.add(reference);
-  }
-
-  // One live membership line per holder: the furthest expiry wins; an award
-  // without expiration never expires.
+/**
+ * One live membership line per holder: awards of trusted `t=membership`
+ * definitions, issued under the NIP-97 rule (admins anything, the badge
+ * issuer sellable definitions only), not expired, and not revoked by the
+ * award's own issuer or an anchor admin. The furthest expiry wins; an award
+ * without expiration never expires.
+ */
+function projectMembers({
+  awards,
+  definitions,
+  deletions,
+  trust,
+  now,
+}: {
+  awards: HomeAwardInput[];
+  definitions: ReadonlyMap<string, HomeDefinitionInput>;
+  deletions: HomeDeletionInput[];
+  trust: CommunityTrust;
+  now: number;
+}): HomeSummary["members"] {
   const perHolder = new Map<string, number | null>();
   for (const award of awards) {
-    if (!trustedIssuers.has(award.issuerPubkey)) continue;
-    if (!membershipAddresses.has(award.definitionAddress)) continue;
-    if (revoked.has(award.id)) continue;
+    const definition = definitions.get(award.definitionAddress);
+    if (!definition || definition.type !== "membership") continue;
+    if (!awardIssuerValid({ issuer: award.issuerPubkey, sellable: definition.sellable, trust })) continue;
     if (award.expiresAt !== undefined && award.expiresAt <= now) continue;
+    const revoked = deletions.some(
+      (deletion) =>
+        deletion.references.includes(award.id) &&
+        revocationSignerValid(deletion.authorPubkey, award.issuerPubkey, trust),
+    );
+    if (revoked) continue;
     const expiry = award.expiresAt ?? null;
     const previous = perHolder.get(award.holderPubkey);
     if (previous === undefined || previous === null || expiry === null || expiry > previous) {
@@ -251,48 +367,74 @@ function projectMembers(
 }
 
 /**
- * Projects the Home attention summary. Untrusted authors, revoked awards, and
- * expired awards never count. The new-venue checklist (HOME-02) replaces
- * zero-filled analytics only when no menu, event, or membership truth exists
- * at all; each checklist done flag is relay-derived.
+ * Projects the Home attention summary. Untrusted authors, revoked awards,
+ * and expired awards never count. The new-venue checklist (HOME-02)
+ * replaces zero-filled analytics only when no menu, event, or membership
+ * truth exists at all; each checklist done flag is relay-derived.
  */
 export function projectHomeSummary({
-  orders,
   profiles,
-  definitions,
+  definitions: allDefinitions,
   awards,
+  statuses,
   calendarEvents,
   deletions,
-  trustedIssuers,
+  trust,
   now,
 }: HomeProjectionInput): HomeSummary {
-  const latestDefinitions = latestByAddress(definitions);
+  const definitions = trustedLatestDefinitions(allDefinitions, trust);
+  const fulfillmentTrust = trustWithFulfillmentRoles(trust, {
+    definitions: [...definitions.values()]
+      .filter((definition) => definition.type === "role")
+      .map((definition) => ({
+        address: definition.address,
+        id: definition.id,
+        authorPubkey: definition.authorPubkey,
+        permissions: definition.permissions ?? [],
+        sellable: definition.sellable,
+        createdAt: definition.createdAt,
+      })),
+    awards,
+    revocations: deletions,
+    now,
+  });
 
   let unavailableMenuCount = 0;
   let menuDone = false;
-  const membershipAddresses = new Set<string>();
-  for (const definition of latestDefinitions.values()) {
-    if (definition.type === "membership") membershipAddresses.add(definition.address);
-    if (!definition.sellable || !PRODUCT_TYPES.has(definition.type ?? "")) continue;
+  let membershipDefined = false;
+  for (const definition of definitions.values()) {
+    if (definition.type === "membership") membershipDefined = true;
+    // The menu card counts priced 30402 product listings only; passes,
+    // tickets, and unpriced listings are not menu items.
+    if (definition.type !== "product" || !definition.sellable) continue;
     menuDone = true;
     if (definition.availability === "unavailable") unavailableMenuCount += 1;
   }
 
-  const venueName = projectVenueName(profiles, trustedIssuers);
-  const ordersSummary = projectOrdersSummary(orders);
-  const nextEvent = projectNextEvent(calendarEvents, trustedIssuers, now);
-  const members = projectMembers(awards, membershipAddresses, deletions, trustedIssuers, now);
+  const venueName = projectVenueName(profiles, trust);
+  const orders = projectOrdersSummary({
+    awards,
+    statuses,
+    definitions,
+    deletions,
+    trust: fulfillmentTrust,
+    now,
+  });
+  const nextEvent = projectNextEvent(calendarEvents, trust, now);
+  const members = projectMembers({ awards, definitions, deletions, trust, now });
 
   const checklist: HomeSetupChecklist = {
     menuDone,
-    eventsDone: latestCalendarEvents(calendarEvents).some((event) => trustedIssuers.has(event.authorPubkey)),
-    membersDone: members.active > 0 || membershipAddresses.size > 0,
+    eventsDone: latestCalendarEvents(calendarEvents).some((event) =>
+      definitionAuthorTrusted(event.authorPubkey, trust),
+    ),
+    membersDone: members.active > 0 || membershipDefined,
   };
   const isNewVenue = !checklist.menuDone && !checklist.eventsDone && !checklist.membersDone;
 
   return {
     ...(venueName ? { venueName } : {}),
-    orders: ordersSummary,
+    orders,
     unavailableMenuCount,
     ...(nextEvent ? { nextEvent } : {}),
     members,

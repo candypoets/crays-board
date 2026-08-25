@@ -4,9 +4,11 @@ import { isEoce, isParsedEvent } from "@candypoets/nipworker/utils";
 import { useEffect, useMemo, useState } from "react";
 import { AppState } from "react-native";
 
+import { isNewerAnchor, parseCommunityAnchor, type CommunityAnchor } from "@/access/nip97";
+import { fetchRelayRootPubkey, trustFromAnchor } from "@/access/trust";
 import { getNostrRuntime } from "@/nostr/manager";
+import { KIND_ANCHOR } from "@/nostr/protocol";
 import { useVenue } from "@/venue/VenueContext";
-import { fetchVenueTrust } from "@/venue/trust";
 
 import { projectEvents, type BoardEvent, type CalendarEventInput, type RsvpInput } from "./fold";
 import { KIND_CALENDAR_EVENT, KIND_RSVP, RSVP_STATUSES, type RsvpStatus } from "./protocol";
@@ -20,43 +22,47 @@ export type EventsResult = {
 type Buffer = {
   events: Map<string, CalendarEventInput>;
   rsvps: Map<string, RsvpInput>;
+  /** Latest root-signed community anchor (NIP-97 trust source). */
+  anchor: CommunityAnchor | null;
 };
 
 const emptyBuffer = (): Buffer => ({
   events: new Map(),
   rsvps: new Map(),
+  anchor: null,
 });
 
 /**
  * Subscription coordinator for the active venue relay. Owns exactly one
- * stable subscription (`board_events_<sanitized relay>`, kinds 31923/31925),
- * extracts plain inputs at the worker boundary, and folds them through the
- * pure projection in fold.ts. EOSE is the loaded signal; a healthy relay with
- * no matching events still reaches ready. Cleanup unsubscribes on unmount,
- * venue change, and backgrounding.
+ * stable subscription (`board_events_<sanitized relay>`, kinds
+ * 31923/31925/31727), extracts plain inputs at the worker boundary, and
+ * folds them through the pure projection in fold.ts. Trust is NIP-97: the
+ * relay's NIP-11 root key authenticates the latest anchor event, which
+ * declares the admins whose calendar events count. EOSE is the loaded
+ * signal; a healthy relay with no matching events still reaches ready.
+ * Cleanup unsubscribes on unmount, venue change, and backgrounding.
  */
 export function useEvents(): EventsResult {
   const { venue, restoring } = useVenue();
   const relayUrl = venue?.relayUrl;
-  const serviceUrl = venue?.serviceUrl;
 
-  const [trustedIssuers, setTrustedIssuers] = useState<ReadonlySet<string> | null>(null);
+  const [rootPubkey, setRootPubkey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [buffer, setBuffer] = useState<Buffer>(emptyBuffer);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
-  // Only venue authorities may author calendar events in this slice
-  // (EVENT-08); guests still RSVP with their own keys.
+  // NIP-97 trust root: the venue relay's NIP-11 community key. Only the
+  // anchor signed by this key declares the venue's admins (EVENT-08).
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTrustedIssuers(null);
+    setRootPubkey(null);
     setError(null);
-    if (!relayUrl || !serviceUrl) return;
+    if (!relayUrl) return;
     let cancelled = false;
-    fetchVenueTrust(relayUrl, serviceUrl)
-      .then((trust) => {
-        if (!cancelled) setTrustedIssuers(trust.trustedIssuers);
+    fetchRelayRootPubkey(relayUrl)
+      .then((pubkey) => {
+        if (!cancelled) setRootPubkey(pubkey);
       })
       .catch((cause: unknown) => {
         if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
@@ -64,7 +70,7 @@ export function useEvents(): EventsResult {
     return () => {
       cancelled = true;
     };
-  }, [relayUrl, serviceUrl]);
+  }, [relayUrl]);
 
   // The single board subscription (same foreground-settle pattern as
   // useOrders: a deep link foregrounds Android immediately before this effect
@@ -73,7 +79,7 @@ export function useEvents(): EventsResult {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBuffer(emptyBuffer());
     setLoaded(false);
-    if (!relayUrl) return;
+    if (!relayUrl || !rootPubkey) return;
     if (!getNostrRuntime().manager) {
       setError("The secure Nostr engine is unavailable. Use a Crays development build.");
       return;
@@ -102,6 +108,17 @@ export function useEvents(): EventsResult {
       const event = isParsedEvent(message);
       if (!event) return;
       const kind = event.kind();
+
+      if (kind === KIND_ANCHOR) {
+        const anchor = parseCommunityAnchor(event);
+        // Only the relay's own root key may declare the community admins.
+        if (!anchor || anchor.pubkey.toLowerCase() !== rootPubkey.toLowerCase()) return;
+        setBuffer((current) => {
+          if (current.anchor && !isNewerAnchor(anchor, current.anchor)) return current;
+          return { ...current, anchor };
+        });
+        return;
+      }
 
       if (kind === KIND_CALENDAR_EVENT) {
         const id = event.id() ?? "";
@@ -168,7 +185,7 @@ export function useEvents(): EventsResult {
         const subId = `board_events_${relayUrl.replace(/[^a-z0-9]/gi, "_")}`;
         unsubscribe = subscribeToNostr(
           subId,
-          [{ kinds: [KIND_CALENDAR_EVENT, KIND_RSVP], relays: [relayUrl], limit: 500, noCache: true }],
+          [{ kinds: [KIND_CALENDAR_EVENT, KIND_RSVP, KIND_ANCHOR], relays: [relayUrl], limit: 500, noCache: true }],
           handleMessage,
           { closeOnEose: false },
         );
@@ -189,7 +206,7 @@ export function useEvents(): EventsResult {
       appStateSubscription.remove();
       stop();
     };
-  }, [relayUrl]);
+  }, [relayUrl, rootPubkey]);
 
   // Upcoming/past classification ticker (same pattern as useOrders).
   useEffect(() => {
@@ -198,15 +215,17 @@ export function useEvents(): EventsResult {
     return () => clearInterval(timer);
   }, [relayUrl]);
 
+  const trust = useMemo(() => (buffer.anchor ? trustFromAnchor(buffer.anchor) : null), [buffer.anchor]);
+
   const events = useMemo(() => {
-    if (!trustedIssuers) return [];
+    if (!trust) return [];
     return projectEvents({
       events: [...buffer.events.values()],
       rsvps: [...buffer.rsvps.values()],
-      trustedIssuers,
+      trust,
       now,
     });
-  }, [trustedIssuers, buffer, now]);
+  }, [trust, buffer, now]);
 
   // Fixed QA contract: one projection marker per visible event, carrying the
   // RSVP totals so the verifier can compare them against relay truth.
@@ -228,6 +247,6 @@ export function useEvents(): EventsResult {
   if (restoring) return { status: "loading", events: [] };
   if (error) return { status: "error", events: [], error };
   if (!venue) return { status: "ready", events: [] };
-  if (!loaded || !trustedIssuers) return { status: "loading", events: [] };
+  if (!loaded || !trust) return { status: "loading", events: [] };
   return { status: "ready", events };
 }

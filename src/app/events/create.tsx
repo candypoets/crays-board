@@ -296,7 +296,7 @@ export default function EventCreateRoute() {
     void (async () => {
       // Exactly one kind 31923 per deliberate publish, confirmed only after an
       // affirmative relay acknowledgement; local intent is never shown as
-      // confirmed state before that (EVENT-04, venue-commerce-nip §6.8).
+      // confirmed state before that (EVENT-04, venue-commerce-nip §9).
       const template = buildCalendarEvent({
         identifier,
         title: draft.title,

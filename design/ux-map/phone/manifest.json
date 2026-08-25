@@ -1,0 +1,389 @@
+{
+  "generatedAt": "2026-08-23T09:33:19.662Z",
+  "runId": "battle-2026-08-23",
+  "apkSha256": "e6b5f2b1347cd0489ac2be91ae34ff638c7c027ff1590e486fcf9dc3d7693169",
+  "profile": "phone",
+  "profileLabel": "Phone · portrait",
+  "device": {
+    "serial": "emulator-5554",
+    "avd": "google",
+    "model": "sdk_gphone64_x86_64",
+    "product": "emu64xa",
+    "apiLevel": 34,
+    "width": 1080,
+    "height": 2400,
+    "density": 420,
+    "orientation": "portrait",
+    "widthDp": 411,
+    "observations": {
+      "size": {
+        "physical": [
+          1080,
+          2400
+        ],
+        "override": null
+      },
+      "density": {
+        "physical": 420,
+        "override": null
+      },
+      "surfaceRotation": 0,
+      "userRotation": 0,
+      "commands": [
+        "wm size",
+        "wm density",
+        "dumpsys input",
+        "settings get system user_rotation"
+      ]
+    }
+  },
+  "receipt": {
+    "file": "run-receipt.json",
+    "sha256": "9956ecca10ab3ac39a6b05abd28c9aa4c6102480b8962b58644afee17ad03c1e",
+    "revisionDigest": "c7bf6da4d0f142fb0581b585f8e852efac867770eb960cf6d00a0c5593c752a8"
+  },
+  "sourceRoot": "phone",
+  "expectedCount": 30,
+  "capturedCount": 30,
+  "missingCount": 0,
+  "journeys": [
+    {
+      "id": "entry",
+      "title": "Entry"
+    },
+    {
+      "id": "create-venue",
+      "title": "Create venue"
+    },
+    {
+      "id": "home",
+      "title": "Home"
+    },
+    {
+      "id": "orders",
+      "title": "Orders"
+    },
+    {
+      "id": "menu",
+      "title": "Menu"
+    },
+    {
+      "id": "events",
+      "title": "Events & check-in"
+    },
+    {
+      "id": "people",
+      "title": "People & roles"
+    },
+    {
+      "id": "invites",
+      "title": "Invites"
+    },
+    {
+      "id": "settings",
+      "title": "Settings"
+    }
+  ],
+  "screens": [
+    {
+      "name": "00-welcome",
+      "journey": "entry",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:23:40.342Z",
+      "sha256": "78682c62d084c53c712aaa2224396477a1e2a61a1ead5a63e337845c4a50dcb2",
+      "source": "welcome/6c064567a9eed6fd/e2e__flows__00-welcome.ad/attempt-1/00-welcome.png"
+    },
+    {
+      "name": "05-venue-selection",
+      "journey": "entry",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:24:17.230Z",
+      "sha256": "d1061741970fb3a8ef00cf97cc9706b3cf9c590f603cbbdfca2cd0115fa19034",
+      "source": "venue-selection/8d1199d859240eff/e2e__flows__05-venue-selection.ad/attempt-1/05-venue-selection.png"
+    },
+    {
+      "name": "10-orders-accepted",
+      "journey": "orders",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:24:53.461Z",
+      "sha256": "8105caee7f3e1a31806c5cf3346f9e83383bac584129052c263ae9924be37a7a",
+      "source": "orders/582bcbb3786be066/e2e__flows__10-orders.ad/attempt-1/10-orders-accepted.png"
+    },
+    {
+      "name": "11-orders-ladder-advance-served",
+      "journey": "orders",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:25:32.613Z",
+      "sha256": "a25998d11f50ecf305f2d3f25c96b3b19d7ede109c8997fe638395a02aa8cc3d",
+      "source": "orders-ladder/ecc4cbe511ce4df0/e2e__flows__11-orders-ladder.phone.ad/attempt-1/11-orders-ladder-advance-served.png"
+    },
+    {
+      "name": "11-orders-ladder-declined",
+      "journey": "orders",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:25:35.917Z",
+      "sha256": "48842451f3084a4ec9b408ef018b6498b448121edd43412ea78cad4316484cc5",
+      "source": "orders-ladder/ecc4cbe511ce4df0/e2e__flows__11-orders-ladder.phone.ad/attempt-1/11-orders-ladder-declined.png"
+    },
+    {
+      "name": "11-orders-ladder-cancel-dialog",
+      "journey": "orders",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:25:42.357Z",
+      "sha256": "415672d4d7451086152ffac570e7181788ba1b288493d31f74922705c8001cb9",
+      "source": "orders-ladder/ecc4cbe511ce4df0/e2e__flows__11-orders-ladder.phone.ad/attempt-1/11-orders-ladder-cancel-dialog.png"
+    },
+    {
+      "name": "11-orders-ladder-final",
+      "journey": "orders",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:25:44.933Z",
+      "sha256": "e208bd3cdee2f24baf7323732e56741e5eab3d8fe4f702d79dccd51428197602",
+      "source": "orders-ladder/ecc4cbe511ce4df0/e2e__flows__11-orders-ladder.phone.ad/attempt-1/11-orders-ladder-final.png"
+    },
+    {
+      "name": "20-menu-catalog",
+      "journey": "menu",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:26:18.576Z",
+      "sha256": "4d97ef139673a89d5c827ff36021db5cc3af19871e9931a8e4ff2ce541c2bfb1",
+      "source": "menu/c4b5d997e9c3f9a9/e2e__flows__20-menu.phone.ad/attempt-1/20-menu-catalog.png"
+    },
+    {
+      "name": "20-menu-toggled",
+      "journey": "menu",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:26:24.920Z",
+      "sha256": "154750198c4ed937eda0298698968db4254c8651d5074cb960fa58c9c4367103",
+      "source": "menu/c4b5d997e9c3f9a9/e2e__flows__20-menu.phone.ad/attempt-1/20-menu-toggled.png"
+    },
+    {
+      "name": "20-menu-edited",
+      "journey": "menu",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:26:34.220Z",
+      "sha256": "e91d0afe02a056604e3f78fc2f245d282a5036db169e47fe088d9cc02e00922e",
+      "source": "menu/c4b5d997e9c3f9a9/e2e__flows__20-menu.phone.ad/attempt-1/20-menu-edited.png"
+    },
+    {
+      "name": "30-events-detail",
+      "journey": "events",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:27:18.088Z",
+      "sha256": "2100da7e004a21fe27c174099d85650f058f30cb2991fb493d0179e553eed6e5",
+      "source": "events/ff8f2418a4f4dc4c/e2e__flows__30-events.phone.ad/attempt-1/30-events-detail.png"
+    },
+    {
+      "name": "30-events-created",
+      "journey": "events",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:27:50.291Z",
+      "sha256": "c1593bd4d0b0fb200de7b3ae501710ce07f87515d7b33b4b0306fdb7853743bd",
+      "source": "events/ff8f2418a4f4dc4c/e2e__flows__30-events.phone.ad/attempt-1/30-events-created.png"
+    },
+    {
+      "name": "31-check-in-ready",
+      "journey": "events",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:28:25.903Z",
+      "sha256": "701c2fe353c1a4639fe97a44f404649ea725813549ff99bbe114003fd268146b",
+      "source": "check-in/97ad1e5affb37d40/e2e__flows__31-check-in.phone.ad/attempt-1/31-check-in-ready.png"
+    },
+    {
+      "name": "31-check-in-accepted",
+      "journey": "events",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:28:33.407Z",
+      "sha256": "c41062825dbcb71b29a6c7823c840d2aed0b247e28a933b3f7f0963d8c25d93a",
+      "source": "check-in/97ad1e5affb37d40/e2e__flows__31-check-in.phone.ad/attempt-1/31-check-in-accepted.png"
+    },
+    {
+      "name": "31-check-in-already-checked-in",
+      "journey": "events",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:28:39.907Z",
+      "sha256": "01676904b67c6730a238467510356fc7fc18022aa31c9d1db6e6c6640a47895d",
+      "source": "check-in/97ad1e5affb37d40/e2e__flows__31-check-in.phone.ad/attempt-1/31-check-in-already-checked-in.png"
+    },
+    {
+      "name": "31-check-in-wrong-event",
+      "journey": "events",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:28:46.730Z",
+      "sha256": "c96c329a83bfe1ff90b336921827fdcf25feb27878cafef78bf344c2212cc809",
+      "source": "check-in/97ad1e5affb37d40/e2e__flows__31-check-in.phone.ad/attempt-1/31-check-in-wrong-event.png"
+    },
+    {
+      "name": "31-check-in-camera-unavailable",
+      "journey": "events",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:28:50.794Z",
+      "sha256": "2f4806a54537c228ff44536dc8550994fc4319c444f0c0fe1fe610978dcabbc3",
+      "source": "check-in/97ad1e5affb37d40/e2e__flows__31-check-in.phone.ad/attempt-1/31-check-in-camera-unavailable.png"
+    },
+    {
+      "name": "40-people-list",
+      "journey": "people",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:29:39.442Z",
+      "sha256": "8509c8ff3db0a13cc390953b9060beac842e02b73f03f34aebabdabf3918fb7e",
+      "source": "people/fa5fa4002b1f1532/e2e__flows__40-people.phone.ad/attempt-1/40-people-list.png"
+    },
+    {
+      "name": "40-people-revoked",
+      "journey": "people",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:29:43.842Z",
+      "sha256": "87e1084908df7eb471c9d6e07ad5fcc24483db4e4ce23f2e8025a4c08309136a",
+      "source": "people/fa5fa4002b1f1532/e2e__flows__40-people.phone.ad/attempt-1/40-people-revoked.png"
+    },
+    {
+      "name": "40-people-role-saved",
+      "journey": "people",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:29:51.802Z",
+      "sha256": "1b2fd2b4fce46409ec25ac5aa315a27f9afc1ee4621d175ff9056550fa6f3358",
+      "source": "people/fa5fa4002b1f1532/e2e__flows__40-people.phone.ad/attempt-1/40-people-role-saved.png"
+    },
+    {
+      "name": "40-people-assigned",
+      "journey": "people",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:29:56.910Z",
+      "sha256": "d5f9b26a928b64ea8a5addcdc264556896bd33d6e39a462294b00d17cf77c0c5",
+      "source": "people/fa5fa4002b1f1532/e2e__flows__40-people.phone.ad/attempt-1/40-people-assigned.png"
+    },
+    {
+      "name": "50-invites-result",
+      "journey": "invites",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:30:40.097Z",
+      "sha256": "39e6b5cb84f0386889dc000b36628b3292ee70605e5fc54cdde9c3d002af8d8f",
+      "source": "invites/531f28cd2991bd40/e2e__flows__50-invites.phone.ad/attempt-1/50-invites-result.png"
+    },
+    {
+      "name": "60-settings-profile-saved",
+      "journey": "settings",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:31:21.328Z",
+      "sha256": "caa179a416ac7851d204a9895dc52f89b8791dc23496d2de49fe17d4592ba987",
+      "source": "settings/579e988d5c8e42a9/e2e__flows__60-settings.phone.ad/attempt-1/60-settings-profile-saved.png"
+    },
+    {
+      "name": "60-settings-membership-unavailable",
+      "journey": "settings",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:31:25.716Z",
+      "sha256": "4785ac97c1f27b67a22a348d4fd42311b32c507f286366eb6ade2af3b8ae5823",
+      "source": "settings/579e988d5c8e42a9/e2e__flows__60-settings.phone.ad/attempt-1/60-settings-membership-unavailable.png"
+    },
+    {
+      "name": "60-settings-payments-not-configured",
+      "journey": "settings",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:31:28.528Z",
+      "sha256": "868aa21f90a64138764a145deda3ff407e10b415a4f52af3b475af69a6080ff2",
+      "source": "settings/579e988d5c8e42a9/e2e__flows__60-settings.phone.ad/attempt-1/60-settings-payments-not-configured.png"
+    },
+    {
+      "name": "60-settings-room",
+      "journey": "settings",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:31:32.240Z",
+      "sha256": "b4a3d9a8c96c0143014d196ed83e65a5ea02b4878426c615209ffe30ac6826c7",
+      "source": "settings/579e988d5c8e42a9/e2e__flows__60-settings.phone.ad/attempt-1/60-settings-room.png"
+    },
+    {
+      "name": "70-create-venue-success",
+      "journey": "create-venue",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:33:08.747Z",
+      "sha256": "f1ae6356e3795facf985d7e1afb11bf2eebbdfddab70ada98cd081d6c606804f",
+      "source": "create-venue/2cc47c032b873ba7/e2e__flows__70-create-venue.ad/attempt-1/70-create-venue-success.png"
+    },
+    {
+      "name": "70-create-venue-home",
+      "journey": "create-venue",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:33:11.035Z",
+      "sha256": "e84dee2cf628cc15ed4465dd9cbbb139f395294b80eb94f1dc30c3b46e5f59c7",
+      "source": "create-venue/2cc47c032b873ba7/e2e__flows__70-create-venue.ad/attempt-1/70-create-venue-home.png"
+    },
+    {
+      "name": "80-home-summary",
+      "journey": "home",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:32:15.380Z",
+      "sha256": "7b47e4a017e7feac7efb432e02e819a20ebe821cf3862a46a4ae8dc8f385f5ad",
+      "source": "home/81ca5f571eafd8a1/e2e__flows__80-home.phone.ad/attempt-1/80-home-summary.png"
+    },
+    {
+      "name": "80-home-orders-destination",
+      "journey": "home",
+      "w": 1080,
+      "h": 2400,
+      "status": "captured",
+      "capturedAt": "2026-08-23T09:32:18.472Z",
+      "sha256": "76c0cfcbe867a805f1a46e26d7361b6ac0525dfb413df8a16cb77a94dde09a52",
+      "source": "home/81ca5f571eafd8a1/e2e__flows__80-home.phone.ad/attempt-1/80-home-orders-destination.png"
+    }
+  ]
+}

@@ -76,7 +76,7 @@ export function OrdersScreen({
                     key={order.id}
                     accessibilityRole="button"
                     onPress={() => setSelectedId(selectedId === order.id ? null : order.id)}
-                    style={({ pressed }) => [styles.ticket, selectedId === order.id && styles.ticketSelected, pressed && styles.pressed]}
+                    style={[styles.ticket, selectedId === order.id && styles.ticketSelected]}
                   >
                     <View style={styles.ticketTop}>
                       <Text style={styles.ticketId}>#{order.id}</Text>

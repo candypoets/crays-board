@@ -103,7 +103,7 @@ function PersonRow({ person, selected, onPress }: { person: Person; selected: bo
       testID={`person-row-${person.pubkey}`}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.personRow, selected && styles.personRowSelected, pressed && styles.pressed]}
+      style={[styles.personRow, selected && styles.personRowSelected]}
     >
       <View style={styles.personCopy}>
         <Text style={styles.personName} numberOfLines={1}>
@@ -298,6 +298,7 @@ function draftFromRole(role: RoleSummary): RoleDraft {
 function PeopleSurface() {
   const { venue } = useVenue();
   const breakpoint = useBreakpoint();
+  const wide = breakpoint === "tablet";
   const [tab, setTab] = useState<Tab>("people");
   const [selectedPubkey, setSelectedPubkey] = useState<string | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<{ person: Person; award: PersonAward } | null>(null);
@@ -397,6 +398,9 @@ function PeopleSurface() {
           `[crays-board-role]${JSON.stringify({ id: signed.id, d: draft.d, permissions: draft.permissions })}`,
         );
       }
+      setRoleDraft((current) =>
+        current?.key === draft.key ? { ...current, isNew: false } : current,
+      );
       setRoleSaveState({ phase: "confirmed" });
     })().catch((cause: unknown) => {
       const message = cause instanceof Error ? cause.message : String(cause);
@@ -506,7 +510,7 @@ function PeopleSurface() {
       {...(revokeState ? { revokeState } : {})}
       onRevoke={(award) => beginRevoke(selectedPerson, award)}
       onAssignRole={openAssignFor}
-      {...(breakpoint === "phone" ? { onBack: () => setSelectedPubkey(null) } : {})}
+      {...(!wide ? { onBack: () => setSelectedPubkey(null) } : {})}
     />
   ) : (
     <Panel style={styles.detail}>
@@ -516,139 +520,177 @@ function PeopleSurface() {
 
   const roleCapReached = roles.length >= ROLE_LIMIT;
 
-  const rolesTab = (
+  const roleListPanel = (
+    <Panel style={styles.roleList} padded>
+      <Text style={styles.sectionLabel}>Configurable roles</Text>
+      <Text style={styles.personMeta}>
+        {roles.length} of {ROLE_LIMIT} configurable roles
+      </Text>
+      {roles.map((role) => {
+        const selected = roleDraft && !roleDraft.isNew && roleDraft.d === role.d;
+        return (
+          <Pressable
+            key={role.address}
+            testID={`role-row-${role.d}`}
+            accessibilityRole="button"
+            onPress={() => {
+              setRoleSaveState(undefined);
+              setRoleDraft(draftFromRole(role));
+            }}
+            style={[styles.roleRow, selected && styles.personRowSelected]}
+          >
+            <View style={styles.personCopy}>
+              <Text style={styles.personName} numberOfLines={1}>
+                {role.name}
+              </Text>
+              <Text style={styles.personMeta}>
+                {role.permissions.length} of {PERMISSIONS.length} permissions
+              </Text>
+            </View>
+            <Text style={styles.roleChevron}>›</Text>
+          </Pressable>
+        );
+      })}
+      <Button
+        testID="create-role-button"
+        label="Create role"
+        tone="secondary"
+        disabled={roleCapReached}
+        onPress={newRole}
+      />
+      {roleCapReached ? (
+        <Text style={styles.noteText}>You can have up to {ROLE_LIMIT} configurable roles.</Text>
+      ) : null}
+    </Panel>
+  );
+
+  const roleEditorPanel = (
+    <Panel testID="role-editor" style={styles.roleEditor}>
+      {roleDraft ? (
+        <>
+          <Text style={styles.editorTitle}>{roleDraft.isNew ? "New role" : roleDraft.name || "Role"}</Text>
+          <Field
+            testID="role-name-input"
+            label="Role name"
+            value={roleDraft.name}
+            onChangeText={(name) => {
+              setRoleSaveState(undefined);
+              setRoleDraft((current) => (current ? { ...current, name } : current));
+            }}
+          />
+          <Field
+            testID="role-description-input"
+            label="Description"
+            value={roleDraft.description}
+            onChangeText={(description) => {
+              setRoleSaveState(undefined);
+              setRoleDraft((current) => (current ? { ...current, description } : current));
+            }}
+          />
+          <Text style={styles.sectionLabel}>Permissions</Text>
+          {PERMISSIONS.map((permission) => (
+            <PermissionToggle
+              key={permission}
+              permission={permission}
+              value={roleDraft.permissions.includes(permission)}
+              disabled={roleSaveState?.phase === "publishing"}
+              onChange={(value) => togglePermission(permission, value)}
+            />
+          ))}
+          <View style={styles.roleStatusSlot}>
+            {roleSaveState?.phase === "error" ? (
+              <Text style={styles.errorText}>{roleSaveState.message}</Text>
+            ) : null}
+            {roleSaveState?.phase === "confirmed" ? <Text style={styles.successText}>Role saved</Text> : null}
+          </View>
+          <Button
+            testID="save-role-button"
+            label={roleSaveState?.phase === "publishing" ? "Saving…" : "Save role"}
+            disabled={roleSaveState?.phase === "publishing"}
+            onPress={saveRole}
+          />
+        </>
+      ) : (
+        <Text style={styles.personMeta}>Select a role to edit its permissions.</Text>
+      )}
+    </Panel>
+  );
+
+  const assignRolePanel = (
+    <Panel testID="assign-panel" style={styles.assignPanel}>
+      <Text style={styles.editorTitle}>Assign role</Text>
+      <Text style={styles.personMeta}>
+        {selectedRole ? `Grant ${selectedRole.name} to a pubkey or npub.` : "Create a role before assigning."}
+      </Text>
+      <Field
+        testID="assign-pubkey-input"
+        label="Pubkey or npub"
+        value={assignDraft.pubkey}
+        autoCapitalize="none"
+        autoCorrect={false}
+        onChangeText={(pubkey) => {
+          setAssignState(undefined);
+          setAssignValidation(null);
+          setAssignDraft((current) => ({ ...current, pubkey }));
+        }}
+      />
+      <Field
+        testID="assign-expiry-input"
+        label="Expiry (optional)"
+        hint="YYYY-MM-DD. Blank means permanent."
+        value={assignDraft.expiry}
+        autoCapitalize="none"
+        autoCorrect={false}
+        onChangeText={(expiry) => {
+          setAssignState(undefined);
+          setAssignValidation(null);
+          setAssignDraft((current) => ({ ...current, expiry }));
+        }}
+      />
+      {assignValidation ? <Text style={styles.errorText}>{assignValidation}</Text> : null}
+      {assignState?.phase === "confirmed" ? <Text style={styles.successText}>Role assigned</Text> : null}
+      <Button
+        testID="assign-confirm-button"
+        label={assignState?.phase === "publishing" ? "Assigning…" : "Assign role"}
+        disabled={!selectedRole || assignState?.phase === "publishing"}
+        onPress={assignRole}
+      />
+    </Panel>
+  );
+
+  // Wide windows: three stable columns — role list, editor, assign — each
+  // sized by flexBasis (deterministic under Yoga, unlike width on a flex
+  // child) and scrolling independently, so nothing clips or collapses and
+  // the assign action is never buried under the editor. Narrow windows keep
+  // the single stacked scroll. Column identity survives saves, so selection
+  // and scroll positions are preserved after the relay echo.
+  const rolesTab = wide ? (
+    <View style={styles.rolesColumns}>
+      <ScrollView style={styles.roleListScroll} contentContainerStyle={styles.roleColumnContent}>
+        {roleListPanel}
+      </ScrollView>
+      <ScrollView style={styles.roleEditorScroll} contentContainerStyle={styles.roleColumnContent}>
+        {roleEditorPanel}
+      </ScrollView>
+      <ScrollView style={styles.roleAssignScroll} contentContainerStyle={styles.roleColumnContent}>
+        {assignRolePanel}
+      </ScrollView>
+    </View>
+  ) : (
     <ScrollView style={styles.rolesScroll} contentContainerStyle={styles.rolesScrollContent}>
-      <View style={[styles.rolesColumns, breakpoint === "phone" && styles.rolesColumnsPhone]}>
-        <Panel style={styles.roleList} padded>
-          <Text style={styles.sectionLabel}>Configurable roles</Text>
-          <Text style={styles.personMeta}>
-            {roles.length} of {ROLE_LIMIT} configurable roles
-          </Text>
-          {roles.map((role) => {
-            const selected = roleDraft && !roleDraft.isNew && roleDraft.d === role.d;
-            return (
-              <Pressable
-                key={role.address}
-                testID={`role-row-${role.d}`}
-                accessibilityRole="button"
-                onPress={() => {
-                  setRoleSaveState(undefined);
-                  setRoleDraft(draftFromRole(role));
-                }}
-                style={({ pressed }) => [styles.roleRow, selected && styles.personRowSelected, pressed && styles.pressed]}
-              >
-                <View style={styles.personCopy}>
-                  <Text style={styles.personName} numberOfLines={1}>
-                    {role.name}
-                  </Text>
-                  <Text style={styles.personMeta}>
-                    {role.permissions.length} of {PERMISSIONS.length} permissions
-                  </Text>
-                </View>
-                <Text style={styles.roleChevron}>›</Text>
-              </Pressable>
-            );
-          })}
-          <Button
-            testID="create-role-button"
-            label="Create role"
-            tone="secondary"
-            disabled={roleCapReached}
-            onPress={newRole}
-          />
-          {roleCapReached ? (
-            <Text style={styles.noteText}>You can have up to {ROLE_LIMIT} configurable roles.</Text>
-          ) : null}
-        </Panel>
-
-        <Panel testID="role-editor" style={styles.roleEditor}>
-          {roleDraft ? (
-            <>
-              <Text style={styles.editorTitle}>{roleDraft.isNew ? "New role" : roleDraft.name || "Role"}</Text>
-              <Field
-                testID="role-name-input"
-                label="Role name"
-                value={roleDraft.name}
-                onChangeText={(name) => {
-                  setRoleSaveState(undefined);
-                  setRoleDraft((current) => (current ? { ...current, name } : current));
-                }}
-              />
-              <Field
-                testID="role-description-input"
-                label="Description"
-                value={roleDraft.description}
-                onChangeText={(description) => {
-                  setRoleSaveState(undefined);
-                  setRoleDraft((current) => (current ? { ...current, description } : current));
-                }}
-              />
-              <Text style={styles.sectionLabel}>Permissions</Text>
-              {PERMISSIONS.map((permission) => (
-                <PermissionToggle
-                  key={permission}
-                  permission={permission}
-                  value={roleDraft.permissions.includes(permission)}
-                  disabled={roleSaveState?.phase === "publishing"}
-                  onChange={(value) => togglePermission(permission, value)}
-                />
-              ))}
-              {roleSaveState?.phase === "error" ? (
-                <Text style={styles.errorText}>{roleSaveState.message}</Text>
-              ) : null}
-              {roleSaveState?.phase === "confirmed" ? <Text style={styles.successText}>Role saved</Text> : null}
-              <Button
-                testID="save-role-button"
-                label={roleSaveState?.phase === "publishing" ? "Saving…" : "Save role"}
-                disabled={roleSaveState?.phase === "publishing"}
-                onPress={saveRole}
-              />
-            </>
-          ) : (
-            <Text style={styles.personMeta}>Select a role to edit its permissions.</Text>
-          )}
-        </Panel>
-
-        <Panel testID="assign-panel" style={styles.assignPanel}>
-          <Text style={styles.editorTitle}>Assign role</Text>
-          <Text style={styles.personMeta}>
-            {selectedRole ? `Grant ${selectedRole.name} to a pubkey or npub.` : "Create a role before assigning."}
-          </Text>
-          <Field
-            testID="assign-pubkey-input"
-            label="Pubkey or npub"
-            value={assignDraft.pubkey}
-            autoCapitalize="none"
-            autoCorrect={false}
-            onChangeText={(pubkey) => {
-              setAssignState(undefined);
-              setAssignValidation(null);
-              setAssignDraft((current) => ({ ...current, pubkey }));
-            }}
-          />
-          <Field
-            testID="assign-expiry-input"
-            label="Expiry (optional)"
-            hint="YYYY-MM-DD. Blank means permanent."
-            value={assignDraft.expiry}
-            autoCapitalize="none"
-            autoCorrect={false}
-            onChangeText={(expiry) => {
-              setAssignState(undefined);
-              setAssignValidation(null);
-              setAssignDraft((current) => ({ ...current, expiry }));
-            }}
-          />
-          {assignValidation ? <Text style={styles.errorText}>{assignValidation}</Text> : null}
-          {assignState?.phase === "confirmed" ? <Text style={styles.successText}>Role assigned</Text> : null}
-          <Button
-            testID="assign-confirm-button"
-            label={assignState?.phase === "publishing" ? "Assigning…" : "Assign role"}
-            disabled={!selectedRole || assignState?.phase === "publishing"}
-            onPress={assignRole}
-          />
-        </Panel>
-      </View>
+      {assignDraft.pubkey || assignState?.phase === "confirmed" ? (
+        <>
+          {assignRolePanel}
+          {roleListPanel}
+          {roleEditorPanel}
+        </>
+      ) : (
+        <>
+          {roleListPanel}
+          {roleEditorPanel}
+          {assignRolePanel}
+        </>
+      )}
     </ScrollView>
   );
 
@@ -656,7 +698,7 @@ function PeopleSurface() {
     <View style={styles.surface}>
       <PeopleTabs tab={tab} onChange={setTab} />
       {tab === "people" ? (
-        breakpoint === "phone" ? (
+        !wide ? (
           <ScrollView style={styles.peopleScroll} contentContainerStyle={styles.peopleScrollContent}>
             {selectedPerson ? peopleDetail : peopleList}
           </ScrollView>
@@ -690,10 +732,11 @@ function PeopleSurface() {
 export default function PeopleRoute() {
   const router = useRouter();
   const { venue, restoring } = useVenue();
+  const breakpoint = useBreakpoint();
 
   return (
     <AppShell active="people" permissions={ADMIN_PERMISSIONS}>
-      <View testID="people-screen" style={styles.screen}>
+      <View testID="people-screen" style={[styles.screen, breakpoint === "phone" && styles.screenPhone]}>
         <ScreenTitle
           title="People & roles"
           description={venue ? "Give every teammate the access they need—and no more." : "No venue selected"}
@@ -718,7 +761,8 @@ export default function PeopleRoute() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 24 },
+  screen: { flex: 1, padding: 24, width: "100%", maxWidth: 1280, alignSelf: "center" },
+  screenPhone: { paddingHorizontal: 16, paddingTop: 18 },
   surface: { flex: 1, gap: 18 },
   tabs: { flexDirection: "row", gap: 8 },
   tabButton: {
@@ -807,11 +851,14 @@ const styles = StyleSheet.create({
   noteText: { color: colors.inkMuted, fontSize: 12, lineHeight: 17 },
   center: { flex: 1, justifyContent: "center" },
   loadingText: { color: colors.inkMuted, fontSize: 15, lineHeight: 22, textAlign: "center" },
-  rolesScroll: { flex: 1 },
-  rolesScrollContent: { paddingBottom: 32 },
-  rolesColumns: { flexDirection: "row", gap: 16, alignItems: "flex-start" },
-  rolesColumnsPhone: { flexDirection: "column" },
-  roleList: { width: 280, gap: 8 },
+  rolesScroll: { flex: 1, minWidth: 0 },
+  rolesScrollContent: { gap: 16, paddingBottom: 32 },
+  rolesColumns: { flex: 1, flexDirection: "row", gap: 16, minWidth: 0, minHeight: 0 },
+  roleListScroll: { flexGrow: 0.85, flexShrink: 1, flexBasis: 0, minWidth: 0, minHeight: 0 },
+  roleEditorScroll: { flexGrow: 1.25, flexShrink: 1, flexBasis: 0, minWidth: 0, minHeight: 0 },
+  roleAssignScroll: { flexGrow: 1.1, flexShrink: 1, flexBasis: 0, minWidth: 0, minHeight: 0 },
+  roleColumnContent: { paddingBottom: 32 },
+  roleList: { width: "100%", minWidth: 0, gap: 8 },
   roleRow: {
     minHeight: 48,
     flexDirection: "row",
@@ -824,7 +871,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   roleChevron: { color: colors.inkFaint, fontSize: 20, lineHeight: 24 },
-  roleEditor: { flex: 1, gap: 12, minWidth: 280 },
-  assignPanel: { width: 300, gap: 12 },
+  roleEditor: { width: "100%", minWidth: 0, gap: 12 },
+  roleStatusSlot: { minHeight: 18 },
+  assignPanel: { width: "100%", minWidth: 0, gap: 12 },
   editorTitle: { color: colors.ink, fontSize: 17, lineHeight: 23, fontWeight: "800" },
 });

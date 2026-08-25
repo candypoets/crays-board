@@ -128,24 +128,25 @@ function CheckInSubscription({ onRetry }: { onRetry: () => void }) {
   const inFlight = useRef(false);
 
   const submitCode = () => {
-    if (!venue || inFlight.current || !checkIn.trustedIssuers || !checkIn.event) return;
+    if (!venue || inFlight.current || !checkIn.trust || !checkIn.event) return;
     const raw = code.trim();
     if (!raw) return;
     inFlight.current = true;
+    const eventAddress = checkIn.event.address;
 
     const result = validatePresentation(raw, {
-      eventId: checkIn.event.id,
-      accessAddress: checkIn.event.accessAddress,
+      eventAddress,
+      venueRelayUrl: venue.relayUrl,
       awards: checkIn.awards,
       statuses: checkIn.statuses,
       revocations: checkIn.revocations,
-      trustedIssuers: checkIn.trustedIssuers,
+      trust: checkIn.trust,
       now: Math.floor(Date.now() / 1000),
       locallyFulfilledAwardIds: locallyFulfilled,
     });
 
     if (!result.ok) {
-      // §8.5: every rejection class produces a specific reason and zero writes.
+      // Every rejection class produces a specific reason and zero writes.
       setSubmit({ phase: "rejected", reason: result.reason });
       setCode("");
       inFlight.current = false;
@@ -154,14 +155,14 @@ function CheckInSubscription({ onRetry }: { onRetry: () => void }) {
 
     setSubmit({ phase: "publishing" });
     void (async () => {
-      // §8.3/§6.8: exactly one fulfilled event-context status, confirmed only
+      // NIP-97: exactly one fulfilled event-context status, confirmed only
       // after an affirmative relay acknowledgement.
       const template = buildOrderStatus({
         awardId: result.award.id,
         definitionAddress: result.award.definitionAddress,
         holderPubkey: result.award.holderPubkey,
         status: "fulfilled",
-        context: "event",
+        context: { type: "event", eventCoordinate: eventAddress },
       });
       const signed = await signActiveEvent(template);
       await publishEvent(signed, [venue.relayUrl], "check_in_status");
@@ -260,12 +261,20 @@ function CheckInSubscription({ onRetry }: { onRetry: () => void }) {
         <View style={styles.columnLeft}>
           <ScannerPanel />
         </View>
-        <ScrollView style={styles.columnRight} contentContainerStyle={styles.columnContent}>
-          {header}
-          {summary}
-          {result}
-          {manualEntry}
-        </ScrollView>
+        <View style={styles.columnRight}>
+          <View style={styles.pinnedContext}>
+            {header}
+            {summary}
+          </View>
+          <View style={styles.resultSlot}>
+            <ScrollView style={styles.resultSlotScroll} contentContainerStyle={styles.resultSlotContent}>
+              {result}
+            </ScrollView>
+          </View>
+          <ScrollView style={styles.columnRightBody} contentContainerStyle={styles.columnContent}>
+            {manualEntry}
+          </ScrollView>
+        </View>
       </View>
     );
   }
@@ -285,13 +294,14 @@ export default function CheckInRoute() {
   const router = useRouter();
   const { venue, restoring } = useVenue();
   const [retryKey, setRetryKey] = useState(0);
+  const breakpoint = useBreakpoint();
 
   return (
     <SafeAreaView testID="check-in-screen" style={styles.screen} edges={["top", "right", "bottom", "left"]}>
-      <View style={styles.container}>
+      <View style={[styles.container, breakpoint === "phone" && styles.containerPhone]}>
         <ScreenTitle
           title="Event check-in"
-          description={venue ? `Live from ${venue.relayUrl.replace(/^wss?:\/\//, "")}` : "No venue selected"}
+          description={venue ? "Validate entry against the connected venue." : "No venue selected"}
           action={<Button label="Back" tone="quiet" compact onPress={() => router.back()} />}
         />
         {restoring ? (
@@ -316,11 +326,17 @@ export default function CheckInRoute() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
   container: { flex: 1, padding: 24, maxWidth: 1080, width: "100%", alignSelf: "center" },
+  containerPhone: { paddingHorizontal: 16, paddingTop: 18 },
   center: { flex: 1, justifyContent: "center" },
   loadingText: { color: colors.inkMuted, fontSize: 15, lineHeight: 22, textAlign: "center" },
-  columns: { flex: 1, flexDirection: "row", gap: 20 },
-  columnLeft: { flex: 1.1 },
-  columnRight: { flex: 1 },
+  columns: { flex: 1, flexDirection: "row", gap: 20, minWidth: 0 },
+  columnLeft: { flex: 1.1, minWidth: 0 },
+  columnRight: { flex: 1, minWidth: 0, gap: 16 },
+  pinnedContext: { gap: 16, flexShrink: 0 },
+  resultSlot: { height: 104, flexShrink: 0 },
+  resultSlotScroll: { flex: 1 },
+  resultSlotContent: { flexGrow: 1 },
+  columnRightBody: { flex: 1, minHeight: 0 },
   single: { flex: 1 },
   columnContent: { gap: 16, paddingBottom: 32 },
   eventHeader: { gap: 2 },

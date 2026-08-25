@@ -40,11 +40,10 @@ function NavButton({
       accessibilityState={{ selected }}
       accessibilityLabel={label}
       onPress={() => onSelect(area)}
-      style={({ pressed }) => [
+      style={[
         styles.navButton,
         compact && styles.navButtonCompact,
         selected && styles.navButtonSelected,
-        pressed && styles.navPressed,
       ]}
     >
       <MaterialCommunityIcons name={icon} size={22} color={selected ? colors.white : "#CDAFBB"} />
@@ -87,7 +86,7 @@ export function BoardShell({
               accessibilityRole="button"
               accessibilityState={{ selected: activeNavArea === item.area }}
               onPress={() => onSelect(item.area)}
-              style={({ pressed }) => [styles.phoneNavItem, pressed && styles.navPressed]}
+              style={styles.phoneNavItem}
             >
               <MaterialCommunityIcons name={item.icon} size={23} color={activeNavArea === item.area ? colors.pink : colors.inkMuted} />
               <Text style={[styles.phoneNavLabel, activeNavArea === item.area && styles.phoneNavLabelActive]}>{item.label}</Text>
@@ -134,7 +133,7 @@ export function BoardShell({
             accessibilityRole="button"
             accessibilityLabel="Create another venue"
             onPress={() => onSelect("create-venue")}
-            style={({ pressed }) => [styles.newVenue, !expanded && styles.newVenueCompact, pressed && styles.navPressed]}
+            style={[styles.newVenue, !expanded && styles.newVenueCompact]}
           >
             <MaterialCommunityIcons name="plus" size={21} color={colors.coral} />
             {expanded ? <Text style={styles.newVenueText}>Create another venue</Text> : null}

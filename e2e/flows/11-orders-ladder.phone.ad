@@ -1,0 +1,44 @@
+# ORDER-06…12 — complete advance, decline, and cancel ladders on phone.
+context platform=android timeout=720000
+env APP_ID=life.crays.board
+
+open "craysboard://qa-handoff?target=orders" --metro-port 8090
+wait "id=\"orders-screen\"" 60000
+wait "id=\"order-card-${AWARD_ID_PREFIX}\"" 30000
+click "id=\"order-action-button-${AWARD_ID_PREFIX}\""
+click "id=\"orders-tab-accepted\""
+wait "id=\"order-status-${AWARD_ID_PREFIX}-accepted\"" 45000
+click "id=\"order-action-button-${AWARD_ID_PREFIX}\""
+click "id=\"orders-tab-processing\""
+wait "id=\"order-status-${AWARD_ID_PREFIX}-processing\"" 45000
+click "id=\"order-action-button-${AWARD_ID_PREFIX}\""
+click "id=\"orders-tab-ready\""
+wait "id=\"order-status-${AWARD_ID_PREFIX}-ready\"" 45000
+click "id=\"order-action-button-${AWARD_ID_PREFIX}\""
+click "id=\"orders-tab-history\""
+wait "id=\"order-status-${AWARD_ID_PREFIX}-fulfilled\"" 45000
+screenshot "${AD_ARTIFACTS}/11-orders-ladder-advance-served.png"
+
+click "id=\"orders-tab-pending\""
+wait "id=\"order-decline-button-${DECLINE_AWARD_ID_PREFIX}\"" 15000
+press "id=\"order-decline-button-${DECLINE_AWARD_ID_PREFIX}\"" --double-tap
+click "id=\"orders-tab-history\""
+wait "id=\"order-status-${DECLINE_AWARD_ID_PREFIX}-cancelled\"" 45000
+screenshot "${AD_ARTIFACTS}/11-orders-ladder-declined.png"
+
+click "id=\"orders-tab-pending\""
+wait "id=\"order-action-button-${CANCEL_AWARD_ID_PREFIX}\"" 15000
+click "id=\"order-action-button-${CANCEL_AWARD_ID_PREFIX}\""
+click "id=\"orders-tab-accepted\""
+wait "id=\"order-status-${CANCEL_AWARD_ID_PREFIX}-accepted\"" 45000
+click "id=\"order-cancel-button-${CANCEL_AWARD_ID_PREFIX}\""
+wait text "Cancel this order?" 10000
+click "label=\"Keep order\""
+click "id=\"order-cancel-button-${CANCEL_AWARD_ID_PREFIX}\""
+wait text "Yes, cancel order" 10000
+screenshot "${AD_ARTIFACTS}/11-orders-ladder-cancel-dialog.png"
+click "label=\"Yes, cancel order\""
+click "id=\"orders-tab-history\""
+wait "id=\"order-status-${CANCEL_AWARD_ID_PREFIX}-cancelled\"" 45000
+screenshot "${AD_ARTIFACTS}/11-orders-ladder-final.png"
+close

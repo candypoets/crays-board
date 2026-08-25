@@ -1,0 +1,7 @@
+file '../proposals/03-check-in-ready-proposal.png'
+duration 1.6
+file '../proposals/04-check-in-accepted-proposal.png'
+duration 2.0
+file '../proposals/03-check-in-ready-proposal.png'
+duration 0.8
+file '../proposals/03-check-in-ready-proposal.png'

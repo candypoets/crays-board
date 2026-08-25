@@ -1,16 +1,8 @@
 #!/usr/bin/env node
-// Independent relay truth for the orders full ladder (venue-commerce-nip §11):
-//   award 1 (advance): exactly 4 monotonic 37237 statuses — accepted,
-//     processing, ready, fulfilled — exact tags, staff signer, valid sigs;
-//   award 2 (decline): exactly one cancelled status (cancelled from pending =
-//     decline, §6.4), no other status;
-//   award 3 (cancel): exactly one accepted then one cancelled, monotonic;
-//   no other 37237 events exist on the relay at all.
-// Tag contract (§6.7, resolved by device evidence): 37237 is addressable-range,
-// so `d` is stage-scoped (`<awardId>:<status>`) to keep every transition
-// retained; `e` is the stable order context.
-// Device truth: the app projected all three orders and logged the same status
-// event ids that landed on the relay.
+// Independent NIP-97 truth for the full order ladder. Because 37237 is
+// addressable by `d=order:<ref>`, the relay retains one current status per
+// staff signer/context. Device markers prove the deliberate transition
+// sequence; relay truth proves the three final current states and exact tags.
 import { execFileSync } from 'node:child_process';
 import { verifyEvent } from 'nostr-tools';
 import { assert, makePool, readState } from './relay-lib.mjs';
@@ -20,66 +12,42 @@ if (!state?.relay_url || !state?.award_id || !state?.decline_award_id || !state?
   throw new Error('run .qa/relay-bootstrap-orders-ladder.mjs first');
 }
 
+const tag = (event, name) => event.tags.find((entry) => entry[0] === name)?.[1];
 const pool = makePool();
 const statuses = await pool.querySync([state.relay_url], { kinds: [37237], limit: 200 });
 pool.close([state.relay_url]);
 
-const tag = (event, name) => event.tags.find((entry) => entry[0] === name)?.[1];
-const byContext = (awardId) =>
-  statuses
-    .filter((event) => tag(event, 'e') === awardId)
-    .sort((a, b) => a.created_at - b.created_at || (a.id < b.id ? -1 : 1));
-
-function checkStatus(event, awardId, awardCreatedAt, value, label) {
-  assert(tag(event, 'status') === value, `${label}: status value is ${value}`);
-  assert(tag(event, 'context') === 'order', `${label}: status context is order`);
-  assert(tag(event, 'd') === `${awardId}:${value}`, `${label}: d tag is the stage-scoped order context (§6.7)`);
-  assert(tag(event, 'e') === awardId, `${label}: e tag references the exact award event id`);
-  assert(tag(event, 'a') === state.product_address, `${label}: a tag references the exact product address`);
-  assert(tag(event, 'p') === state.user_pubkey, `${label}: p tag is the fixture order holder`);
-  assert(event.pubkey === state.admin_pubkey, `${label}: status is signed by the staff (admin) pubkey`);
-  assert(verifyEvent(event), `${label}: status event has a valid Nostr signature`);
-  assert(event.created_at >= awardCreatedAt, `${label}: status created_at is not older than the award`);
+function currentFor(awardId) {
+  return statuses.filter((event) => tag(event, 'e') === awardId);
 }
 
-function checkMonotonic(events, label) {
-  for (let index = 1; index < events.length; index += 1) {
-    assert(events[index].created_at > events[index - 1].created_at, `${label}: created_at strictly increases (§6.6)`);
-  }
+function checkCurrent(event, awardId, awardCreatedAt, value, label) {
+  assert(event, `${label}: current status exists`);
+  assert(tag(event, 'status') === value, `${label}: current status is ${value}`);
+  assert(tag(event, 'order') === awardId, `${label}: order tag uses the award-id fallback reference`);
+  assert(tag(event, 'd') === `order:${awardId}`, `${label}: d matches its NIP-97 order context`);
+  assert(tag(event, 'e') === awardId, `${label}: e references the exact award event id`);
+  assert(tag(event, 'a') === state.product_address, `${label}: a references the exact product listing`);
+  assert(tag(event, 'p') === state.user_pubkey, `${label}: p is the fixture order holder`);
+  assert(event.pubkey === state.admin_pubkey, `${label}: status is signed by the staff admin`);
+  assert(verifyEvent(event), `${label}: status has a valid Nostr signature`);
+  assert(event.created_at >= awardCreatedAt, `${label}: status is not older than its award`);
 }
 
-// Award 1 — advance-full: exactly the four ladder stages in order.
-const advance = byContext(state.award_id);
-assert(advance.length === 4, `advance award has exactly four 37237 statuses (${advance.length} found)`);
-['accepted', 'processing', 'ready', 'fulfilled'].forEach((value, index) => {
-  checkStatus(advance[index], state.award_id, state.award_created_at, value, `advance status #${index + 1}`);
-});
-checkMonotonic(advance, 'advance ladder');
+const advance = currentFor(state.award_id);
+const declined = currentFor(state.decline_award_id);
+const cancelled = currentFor(state.cancel_award_id);
+assert(advance.length === 1, `advance context retains exactly one status (${advance.length} found)`);
+assert(declined.length === 1, `decline context retains exactly one status (${declined.length} found)`);
+assert(cancelled.length === 1, `cancel context retains exactly one status (${cancelled.length} found)`);
+checkCurrent(advance[0], state.award_id, state.award_created_at, 'fulfilled', 'advance order');
+checkCurrent(declined[0], state.decline_award_id, state.decline_award_created_at, 'cancelled', 'declined order');
+checkCurrent(cancelled[0], state.cancel_award_id, state.cancel_award_created_at, 'cancelled', 'cancelled order');
 
-// Award 2 — decline: exactly one cancelled status (cancelled from pending).
-const declined = byContext(state.decline_award_id);
-assert(declined.length === 1, `decline award has exactly one 37237 status (${declined.length} found)`);
-checkStatus(declined[0], state.decline_award_id, state.decline_award_created_at, 'cancelled', 'decline status');
-
-// Award 3 — cancel: exactly accepted then cancelled.
-const cancelled = byContext(state.cancel_award_id);
-assert(cancelled.length === 2, `cancel award has exactly two 37237 statuses (${cancelled.length} found)`);
-checkStatus(cancelled[0], state.cancel_award_id, state.cancel_award_created_at, 'accepted', 'cancel status #1');
-checkStatus(cancelled[1], state.cancel_award_id, state.cancel_award_created_at, 'cancelled', 'cancel status #2');
-checkMonotonic(cancelled, 'cancel sequence');
-
-// Forbidden: no 37237 outside the three seeded order contexts (e is the
-// stable order context reference).
 const known = new Set([state.award_id, state.decline_award_id, state.cancel_award_id]);
-const foreign = statuses.filter((event) => !known.has(tag(event, 'e')));
-assert(statuses.length === 7, `exactly seven 37237 events exist in total (${statuses.length} found)`);
-assert(foreign.length === 0, 'no 37237 status references any other order context');
+assert(statuses.length === 3, `exactly three retained 37237 statuses exist (${statuses.length} found)`);
+assert(statuses.every((event) => known.has(tag(event, 'e'))), 'no status references another order');
 
-// Device truth: the app must have projected the seeded orders and published
-// the same status events it logged. Marker payloads are JSON per the fixed
-// app contract:
-//   [crays-board-order]        {"id": <award id>, "a": <definition address>, "status": <projected>}
-//   [crays-board-order-status] {"id": <status event id>, "e": <award id>, "status": <value>}
 const log = execFileSync('adb', ['logcat', '-d'], { maxBuffer: 64 * 1024 * 1024 }).toString();
 const markerPayloads = (marker) =>
   log
@@ -105,17 +73,31 @@ for (const [awardId, label] of [
   [state.cancel_award_id, 'cancel'],
 ]) {
   const projected = orders.find((entry) => JSON.stringify(entry).includes(awardId));
-  assert(projected, `app projected an order for the ${label} award id`);
-  assert(
-    JSON.stringify(projected).includes(state.product_address),
-    `projected ${label} order carries the exact definition address`,
-  );
+  assert(projected, `app projected the ${label} order`);
+  assert(JSON.stringify(projected).includes(state.product_address), `${label} order carries the exact listing address`);
 }
 
 const published = markerPayloads('[crays-board-order-status]');
-for (const event of statuses) {
-  const match = published.find((entry) => JSON.stringify(entry).includes(event.id));
-  assert(match, `app logged the same ${tag(event, 'status')} status event id that landed on the relay`);
-}
+const sequenceFor = (awardId) => published.filter((entry) => entry.e === awardId);
+const advanceSequence = sequenceFor(state.award_id);
+const declineSequence = sequenceFor(state.decline_award_id);
+const cancelSequence = sequenceFor(state.cancel_award_id);
+assert(
+  JSON.stringify(advanceSequence.map((entry) => entry.status)) ===
+    JSON.stringify(['accepted', 'processing', 'ready', 'fulfilled']),
+  'device published the complete advance sequence exactly once',
+);
+assert(
+  JSON.stringify(declineSequence.map((entry) => entry.status)) === JSON.stringify(['cancelled']),
+  'device published one decline status despite the double tap',
+);
+assert(
+  JSON.stringify(cancelSequence.map((entry) => entry.status)) === JSON.stringify(['accepted', 'cancelled']),
+  'device published accepted then cancelled after the dismissed confirmation',
+);
+assert(advanceSequence.at(-1)?.id === advance[0].id, 'advance final marker matches retained relay status');
+assert(declineSequence.at(-1)?.id === declined[0].id, 'decline marker matches retained relay status');
+assert(cancelSequence.at(-1)?.id === cancelled[0].id, 'cancel final marker matches retained relay status');
+assert(new Set(published.map((entry) => entry.id)).size === 7, 'all seven deliberate transition events had unique ids');
 
 console.log('CRAYS BOARD ORDER LADDER PASS');

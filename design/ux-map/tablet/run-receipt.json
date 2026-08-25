@@ -1,0 +1,1453 @@
+{
+  "schemaVersion": 1,
+  "mode": "automated",
+  "runId": "battle-2026-08-23",
+  "profile": "tablet",
+  "status": "passed",
+  "startedAt": "2026-08-23T09:35:56.428Z",
+  "retryPolicy": {
+    "maximumRetriesPerScenario": 0
+  },
+  "revision": {
+    "algorithm": "sha256-working-tree-v1",
+    "digest": "c7bf6da4d0f142fb0581b585f8e852efac867770eb960cf6d00a0c5593c752a8",
+    "headCommit": "bcc0744614b24b54987ce605673349e005ae9f02",
+    "dirty": true,
+    "statusSha256": "eeaafb36b8844e392b6cf09ec002a583d15cf6f72be1e9cc607c62939e34173c",
+    "components": {
+      "source": {
+        "sha256": "785f62e33ba8646d06e69649f496e0372eccb9a0d6e58afd491c3d9c03b816c2",
+        "fileCount": 114,
+        "files": [
+          {
+            "path": "app.json",
+            "state": "present",
+            "sha256": "c54629c699a88caf17a0426791fc76054edc7ecb6526130f87767a924a0c2d0e"
+          },
+          {
+            "path": "babel.config.js",
+            "state": "present",
+            "sha256": "e4816f1c21a8198f90d7840f2f97d576e47e007f2c75ec75681d95306aaddc64"
+          },
+          {
+            "path": "global.css",
+            "state": "present",
+            "sha256": "cc1a7ad0d019ddb1d32d0ecb588ba0ac26ce41d8625dd6c366348b25f83a28ec"
+          },
+          {
+            "path": "metro.config.js",
+            "state": "present",
+            "sha256": "3491732a87f91a6110ffbda410e48666436cb4377ffd7f8aa7070334958e03db"
+          },
+          {
+            "path": "nativewind-env.d.ts",
+            "state": "present",
+            "sha256": "ba93dc3eac6e58df36919fd4905c4cf02cae566cbb7849c3e3de3451f8ac28ff"
+          },
+          {
+            "path": "package.json",
+            "state": "present",
+            "sha256": "b8e6315a253e9ef17850fbff50e5d851a1b1e097be34840366efc218ff7d60a2"
+          },
+          {
+            "path": "patches/@candypoets+nipworker+0.97.11.patch",
+            "state": "deleted",
+            "sha256": null
+          },
+          {
+            "path": "src/__tests__/smoke.test.ts",
+            "state": "present",
+            "sha256": "bdd4d52fa2de2761250beb0e0adbcdc4d791658a35ddf7eeb433b1d910b1abf8"
+          },
+          {
+            "path": "src/access/__tests__/nip97.test.ts",
+            "state": "present",
+            "sha256": "41102ae3880c483cdf2514fa467abffffa8804c72cfe76be68948f3080785ce7"
+          },
+          {
+            "path": "src/access/__tests__/trust.test.ts",
+            "state": "present",
+            "sha256": "84cc96fb6950d06cb3613ee9f4f9ae2c6c6a99d9aaa135397bfcaa48a5934f3b"
+          },
+          {
+            "path": "src/access/nip97.ts",
+            "state": "present",
+            "sha256": "2e09cb5b49ee8cba5543f2a57c1631ffbcb752db737bf8d51307f2a5d7008fcb"
+          },
+          {
+            "path": "src/access/trust.ts",
+            "state": "present",
+            "sha256": "ba7e7b09fe6d48b9834b06d066052045b8d6409c0c71e451c791374fb29f60c9"
+          },
+          {
+            "path": "src/account/account.ts",
+            "state": "present",
+            "sha256": "acff3bf5dc7adf21e08eac6470feafcaa5215553716bf583cf04c65bff141aab"
+          },
+          {
+            "path": "src/app/_layout.tsx",
+            "state": "present",
+            "sha256": "1ab2a673fdaec65a11163b4afc2ee99a989571ff4349bfe3beb0215574ee1766"
+          },
+          {
+            "path": "src/app/board.tsx",
+            "state": "present",
+            "sha256": "3d09be9bf2b8d4ee7de4c5ca8b584b9a3b1cd473d76b5e8c79ab22cbe853acdd"
+          },
+          {
+            "path": "src/app/check-in.tsx",
+            "state": "present",
+            "sha256": "4f84b1282d570be1ff792fb288ae9565af6fbc9916556cdcdd218dddb38d0e1d"
+          },
+          {
+            "path": "src/app/create-venue.tsx",
+            "state": "present",
+            "sha256": "bd6059a6eb56f8986b9dc2ea91573cccc69f8edd49a6453701d9564a5d603924"
+          },
+          {
+            "path": "src/app/events.tsx",
+            "state": "present",
+            "sha256": "6b97e152f21cf1a012ec645ab45203485b25b9c011e28265976b16ada5a42c54"
+          },
+          {
+            "path": "src/app/events/create.tsx",
+            "state": "present",
+            "sha256": "61b986e73cdc608d77c006fd889d2773a3e0bcb89f39ad40019c4263183d74bb"
+          },
+          {
+            "path": "src/app/home.tsx",
+            "state": "present",
+            "sha256": "a6022872be9bc6081d356a3b9023e4b68b8ecb2b1c415f0cccdfd87ade4b28da"
+          },
+          {
+            "path": "src/app/index.tsx",
+            "state": "present",
+            "sha256": "7ce10c6b32de19db22d4b38b6c6f3e48c1a470771592785a50fbf6bbd9923c2b"
+          },
+          {
+            "path": "src/app/invites.tsx",
+            "state": "present",
+            "sha256": "dc058db655c554f508dc3402bd5bf8b701ad9d41850a31b0aa6b29e4281d3d5e"
+          },
+          {
+            "path": "src/app/menu.tsx",
+            "state": "present",
+            "sha256": "cf716b248780c033d36f9aed52a4887e0fbce25f23b65f0f85900c33b0964f86"
+          },
+          {
+            "path": "src/app/more.tsx",
+            "state": "present",
+            "sha256": "438748a1a0ea86a942b28dfa7a510ef19ffb7491f185bf49d99fb191108d2d78"
+          },
+          {
+            "path": "src/app/orders.tsx",
+            "state": "present",
+            "sha256": "67d95e03e9bcda93968d35a0a9a0f41d94e35fc39fb8c4ebc89c460ae3f26cd1"
+          },
+          {
+            "path": "src/app/people.tsx",
+            "state": "present",
+            "sha256": "e6c51460afed4191bccccbaa322027267a7721d98f5575bcf95c8416b5f3078d"
+          },
+          {
+            "path": "src/app/qa-handoff.tsx",
+            "state": "present",
+            "sha256": "ccb327d13f264864024472d911961def23232cf84b4e2cfd9edd9bdc15887bca"
+          },
+          {
+            "path": "src/app/qa-seed.tsx",
+            "state": "present",
+            "sha256": "cd0c8c2cd29c15f661a7008783c9eed4301e99de58cf50042bdea5c3263b2ab4"
+          },
+          {
+            "path": "src/app/settings.tsx",
+            "state": "present",
+            "sha256": "d202c838e05e5bd2b4fa9767d389468ea4858a810390c7ac36316c7ef9e89cc2"
+          },
+          {
+            "path": "src/app/settings/memberships.tsx",
+            "state": "present",
+            "sha256": "29b060ec7a47f8abc593d62dfcbe72395720afb68f8cc99587001fc054eb1b9b"
+          },
+          {
+            "path": "src/app/settings/payments.tsx",
+            "state": "present",
+            "sha256": "6198a38aeede04187512e479f7dc2adf902ac86e5e0104364787f751e956aec6"
+          },
+          {
+            "path": "src/app/settings/room.tsx",
+            "state": "present",
+            "sha256": "dab617264aa0e61a6c5aeb2f6895fcab1eeddf47b527d2c02534fb79266c55db"
+          },
+          {
+            "path": "src/app/sign-in.tsx",
+            "state": "present",
+            "sha256": "2390669f3a8bf81f9827e6e75ba6f73165f1ff30b4894f3b024959cbba12babb"
+          },
+          {
+            "path": "src/app/venue-selection.tsx",
+            "state": "present",
+            "sha256": "f8b308512c3f768cbf41b396f079d547ea6b6c0c2f7d3aa874c570610e6ebe65"
+          },
+          {
+            "path": "src/check-in/__tests__/fold.test.ts",
+            "state": "present",
+            "sha256": "9e3d3ab79346e4dff756d364b674be11875bdd2b632d9ecaf7af8e07e3f05229"
+          },
+          {
+            "path": "src/check-in/__tests__/presentation.test.ts",
+            "state": "present",
+            "sha256": "679df10dbf41504f055ab603a3cf958e2aeaace223a9bbdbaf1db3ba1b9609c7"
+          },
+          {
+            "path": "src/check-in/fold.ts",
+            "state": "present",
+            "sha256": "4022ab31dc880626c34164c24b473ea0b9dc119dadfaa16d83ef4d8fadb8791b"
+          },
+          {
+            "path": "src/check-in/presentation.ts",
+            "state": "present",
+            "sha256": "7b6bc4d8aae9dc7feb1289b7372f9de643f9d58e9ef0672c96aad45747a6be61"
+          },
+          {
+            "path": "src/check-in/useCheckIn.ts",
+            "state": "present",
+            "sha256": "9323680019376bbf24b5099393537454a951c820117ec729440865fa357830ff"
+          },
+          {
+            "path": "src/components/BoardShell.tsx",
+            "state": "present",
+            "sha256": "d2522b0c85ec1bc9257ac696945a446ac67143bae5c68ace6739dcbd43107e48"
+          },
+          {
+            "path": "src/components/BrandMark.tsx",
+            "state": "present",
+            "sha256": "c8b72f5d971b1b5e19eaa3d38bcaf54dde4fc13be90f623abad7d59e19bcbadc"
+          },
+          {
+            "path": "src/components/ui.tsx",
+            "state": "present",
+            "sha256": "58a7e12248724c087c858d6b9de7040323a34af2feb7387ecfe8557047c01cd9"
+          },
+          {
+            "path": "src/create-venue/CreateVenueWizard.tsx",
+            "state": "present",
+            "sha256": "e4cffcf20f9c158ec3589e68873c2b7b3af61178b44e765102a1049a39de6c2c"
+          },
+          {
+            "path": "src/create-venue/__tests__/model.test.ts",
+            "state": "present",
+            "sha256": "a237932a7edc2f2a8ab36d8f1757a3c1a96f2cf143363733c6016ec4c04b8bc9"
+          },
+          {
+            "path": "src/create-venue/attempts.ts",
+            "state": "present",
+            "sha256": "23c8cd53f4eb3e27b2eb68a2e34ae05616ffb963e64e286619399302e57774b3"
+          },
+          {
+            "path": "src/create-venue/coordinator.ts",
+            "state": "present",
+            "sha256": "e17b8c30c2f69f97ee03d208b52e01a09137f91a4c7067b78d7403cec3f02d62"
+          },
+          {
+            "path": "src/create-venue/model.ts",
+            "state": "present",
+            "sha256": "47e177f072e108808532c9c42c7df2d5807fa62730e55e314d25435b6a1cd139"
+          },
+          {
+            "path": "src/create-venue/ownerAccount.ts",
+            "state": "present",
+            "sha256": "309e35a5f25050bd93e25f61ff9abb14664b031b5b565545646508796df69e5d"
+          },
+          {
+            "path": "src/create-venue/provision.ts",
+            "state": "present",
+            "sha256": "135374be40b57edd2cca0bdf1816b04c734e59352fc5a94cca89c1c90966298d"
+          },
+          {
+            "path": "src/data/sample.ts",
+            "state": "present",
+            "sha256": "61d203bbe65763234226cf7b9837e3cdae8c642c9327c8828c5227b7d9196cc0"
+          },
+          {
+            "path": "src/events/__tests__/draft.test.ts",
+            "state": "present",
+            "sha256": "175de7df7d183618700e4d7eaf494743997e613ab8ec72c1e4621e24fd83598c"
+          },
+          {
+            "path": "src/events/__tests__/fold.test.ts",
+            "state": "present",
+            "sha256": "7465e3f9a1d33dc728eb19ef52c988da18cc264e77f2f5c63ef7736e6b166a6d"
+          },
+          {
+            "path": "src/events/__tests__/protocol.test.ts",
+            "state": "present",
+            "sha256": "c2e2b4a4067bb9956385648e35ea06b29adb64f4491cb93511587d78ad549274"
+          },
+          {
+            "path": "src/events/draft.ts",
+            "state": "present",
+            "sha256": "229972b1afb75fabd2bade65f9dd8f3ae3b690ec27a9c8b77942e3f98e25f425"
+          },
+          {
+            "path": "src/events/fold.ts",
+            "state": "present",
+            "sha256": "2009cef6f227cb3a138e8dd47cceb6c326aa0b405cd5ea6ffab51cf5d6cefdb6"
+          },
+          {
+            "path": "src/events/protocol.ts",
+            "state": "present",
+            "sha256": "fd8e99a9005d93218a2a816aeb5ed74d7f48486a266dbed1cd1081cf5fdc5fea"
+          },
+          {
+            "path": "src/events/useEvents.ts",
+            "state": "present",
+            "sha256": "7cd0b948ce81424318a99ed1bd0e315e55812d0c0988c6b9fe057f99e3bbb25d"
+          },
+          {
+            "path": "src/home/__tests__/summary.test.ts",
+            "state": "present",
+            "sha256": "a6a4a6a71d080a1258af516b314b8dcfdc78b56b81c003df047e868105a5a80b"
+          },
+          {
+            "path": "src/home/summary.ts",
+            "state": "present",
+            "sha256": "1cc5546606b0f84513c117162a2f1b15099d71db2b9b910a59a05972333ba5f3"
+          },
+          {
+            "path": "src/home/useHomeSummary.ts",
+            "state": "present",
+            "sha256": "70e5ad19da74db93669cdacf2788310eaa87e071fad919eebfe353f91b5a5eac"
+          },
+          {
+            "path": "src/invites/__tests__/invites.test.ts",
+            "state": "present",
+            "sha256": "56d2380c8b68cab9abf2924ed565f7c45649220b69c39cc410aa4cae1420cc4b"
+          },
+          {
+            "path": "src/invites/createInvite.ts",
+            "state": "present",
+            "sha256": "379c0ad5f43bedd19c51659066cc5cd704058b0e65384f82c06629fc7f0be168"
+          },
+          {
+            "path": "src/invites/invites.ts",
+            "state": "present",
+            "sha256": "f3b52e64f61d79fb1942cb38b6b7ab61985554ac6f51bf6d7dfb1c9cb379bf84"
+          },
+          {
+            "path": "src/menu/__tests__/fold.test.ts",
+            "state": "present",
+            "sha256": "02b60050109ffb8558d7009d5a95e158b4ebd748fe47f36c774827a681d7da73"
+          },
+          {
+            "path": "src/menu/__tests__/protocol.test.ts",
+            "state": "present",
+            "sha256": "9e1efe53402bfaabaf2c55c1422d62c719ba7ff1a0aa824fbe64666e5d2fcc8b"
+          },
+          {
+            "path": "src/menu/fold.ts",
+            "state": "present",
+            "sha256": "64b3e75c54631ae099431976932daa67009c0cd68384043fa59ed054eee940dd"
+          },
+          {
+            "path": "src/menu/protocol.ts",
+            "state": "present",
+            "sha256": "0972e2205700fbf66efefdd63309765864c9eaf2183531c270ce530890d6eedd"
+          },
+          {
+            "path": "src/menu/useMenu.ts",
+            "state": "present",
+            "sha256": "caaebc614f91e98153c27f72d2dc11edeaac802d5a64b13d26e90245d2119306"
+          },
+          {
+            "path": "src/nostr/__tests__/protocol.test.ts",
+            "state": "present",
+            "sha256": "d5fe5adad85b77e9931be78ec0bac5d3d56ab5cd326666e62a893ed494fe4c67"
+          },
+          {
+            "path": "src/nostr/__tests__/runtime-compatibility.test.ts",
+            "state": "present",
+            "sha256": "6e902e77c3f1ca222bae94f7649427cdd1714f4dac6ec861f3af20252bbbf2b6"
+          },
+          {
+            "path": "src/nostr/manager.ts",
+            "state": "present",
+            "sha256": "c41df3bdc087ce19f8d4150bb8f75a05b435f0e2fcc579db4eb756c6961c14a5"
+          },
+          {
+            "path": "src/nostr/protocol.ts",
+            "state": "present",
+            "sha256": "1c81037120f3379b49b031d58370825c1224c6b015915bd2cdf4b9a8d7b15150"
+          },
+          {
+            "path": "src/nostr/publish.ts",
+            "state": "present",
+            "sha256": "d37ab033204f7e63ee6f11f1176276107dc005e5cf4c663a4820dbfcff53a8d0"
+          },
+          {
+            "path": "src/orders/__tests__/builders.test.ts",
+            "state": "present",
+            "sha256": "55927afa37c6b106f6cd6fb69beba1ca36b2b351ef5e98597ddb823f21e99e22"
+          },
+          {
+            "path": "src/orders/__tests__/fold.test.ts",
+            "state": "present",
+            "sha256": "634e11044125999cf2a88001800e843f0ef363b77cd565034cccac1d925c0a36"
+          },
+          {
+            "path": "src/orders/builders.ts",
+            "state": "present",
+            "sha256": "a046a5a1aa13ae61c6a3d94734f98fe8337e79bd2284191c5d51e8711b72e5eb"
+          },
+          {
+            "path": "src/orders/fold.ts",
+            "state": "present",
+            "sha256": "3d030d321ed39eb8c5df0bc71a3ba23826a8a28466057abc60aa3000c904e623"
+          },
+          {
+            "path": "src/orders/useOrders.ts",
+            "state": "present",
+            "sha256": "154adfe827b8dbd4b8341418324e4891d1f7df875d714f6c8afeb48e5207b0ee"
+          },
+          {
+            "path": "src/people/__tests__/builders.test.ts",
+            "state": "present",
+            "sha256": "628ed5ac63005f423765df59e169a988029b3ede4bd045ff30ccb8f58c52d953"
+          },
+          {
+            "path": "src/people/__tests__/fold.test.ts",
+            "state": "present",
+            "sha256": "989c4fe69435847825eabddd7a2df6e2993c8b92b720a76bc62b68dfe61c7d83"
+          },
+          {
+            "path": "src/people/builders.ts",
+            "state": "present",
+            "sha256": "392fc3fde9f954c5e247d7ec1a577180dad62101be0238d0b92bbfc45cf01375"
+          },
+          {
+            "path": "src/people/fold.ts",
+            "state": "present",
+            "sha256": "78863e35661c5dd452911b48a58bd6e57691142523f5b988d38b3db260bfe831"
+          },
+          {
+            "path": "src/people/usePeople.ts",
+            "state": "present",
+            "sha256": "6571123c0e584f28473281f4e1ea7834f1bbd32da2e35241f2333faee10b2f05"
+          },
+          {
+            "path": "src/polyfills/text-encoding.ts",
+            "state": "present",
+            "sha256": "1b5a1c7fe3956fdfca4e188a542be2d012bc1661f92517c4ee520be050f90247"
+          },
+          {
+            "path": "src/screens/BoardApp.tsx",
+            "state": "present",
+            "sha256": "39d04666a95cd600a311a1fa0c17952b2b47428e546f74d75d252618d405f472"
+          },
+          {
+            "path": "src/screens/CommunityScreens.tsx",
+            "state": "present",
+            "sha256": "fa05d3871c00af3ec18bc46ee22aeb44e1a33a09bb78cd1f6db16d55d62d0c69"
+          },
+          {
+            "path": "src/screens/CreateVenueScreen.tsx",
+            "state": "present",
+            "sha256": "dabb7f51a211dd6c48e4a2dfac12a87921e49e4811b3db163462ce3a651c7934"
+          },
+          {
+            "path": "src/screens/EventsScreen.tsx",
+            "state": "present",
+            "sha256": "c6750271e5997d0f9232d34c2acd9b04b586d7c6aaa99fdcbdefe531ec7ae67f"
+          },
+          {
+            "path": "src/screens/HomeScreen.tsx",
+            "state": "present",
+            "sha256": "a57b65b8c9e550507f87d543c1de48d9a727c28f2659c80ebe7af8e00bfac268"
+          },
+          {
+            "path": "src/screens/MenuScreen.tsx",
+            "state": "present",
+            "sha256": "70211aae4b2039da4fe8b9446a1efbc860dc72b9cb847930a650b0df00ff0eb0"
+          },
+          {
+            "path": "src/screens/OrdersScreen.tsx",
+            "state": "present",
+            "sha256": "252907aecc13ce3621d69f1c80bb59c7725f3adff3a907089a7f13bca32363b3"
+          },
+          {
+            "path": "src/settings/MembershipsSection.tsx",
+            "state": "present",
+            "sha256": "1d943fa1f6817e4f029d19c80245a7cf565de8b6bd252ec265d4ef4ebf13cda0"
+          },
+          {
+            "path": "src/settings/PaymentsSection.tsx",
+            "state": "present",
+            "sha256": "e5286d8dee4eae34cf4e3d7ce4e9d580233a514f8e522a75dfa72e7707725008"
+          },
+          {
+            "path": "src/settings/ProfileSection.tsx",
+            "state": "present",
+            "sha256": "b100799df3c08d9c03bb7c5582c04049039deeb7bbec17c28d761311e221cd53"
+          },
+          {
+            "path": "src/settings/RoomSection.tsx",
+            "state": "present",
+            "sha256": "7fcb9bd246957796e4a2a121009af1bd3424aacc63d9a6345baa8c12243d89e6"
+          },
+          {
+            "path": "src/settings/SettingsScreen.tsx",
+            "state": "present",
+            "sha256": "67911f8c56761590747ed9aed27a8ecce0dba310efc30ac1bc549e33c7ad553f"
+          },
+          {
+            "path": "src/settings/__tests__/fold.test.ts",
+            "state": "present",
+            "sha256": "662728cf785ddb2674a4c286c73317948f37713453f1e2d32442d28adbd4a2c9"
+          },
+          {
+            "path": "src/settings/__tests__/payments.test.ts",
+            "state": "present",
+            "sha256": "23afe1f9a21c7b43b97e0c0cb578ad1024276ec7597d3e580bba0a3fe8b40e2f"
+          },
+          {
+            "path": "src/settings/__tests__/protocol.test.ts",
+            "state": "present",
+            "sha256": "6a26cb2b57cfd8ffe12cede4cea5cc61a86f5750e2b11ecf57b9b92edb32ba63"
+          },
+          {
+            "path": "src/settings/fold.ts",
+            "state": "present",
+            "sha256": "bc0ae1a1a999d0da31e77382229c660964e65a1de9659e4acf47c134740e69e5"
+          },
+          {
+            "path": "src/settings/payments.ts",
+            "state": "present",
+            "sha256": "1923c96c5ee96e9e2c2e6d48fd9ffd73d650e25e34c6e05cee2bab6e30e0c39c"
+          },
+          {
+            "path": "src/settings/protocol.ts",
+            "state": "present",
+            "sha256": "e64abf183237dce64795d4632c729cd6e831cba38ede5e33603e9fcc3a45d0d3"
+          },
+          {
+            "path": "src/settings/useSettingsData.ts",
+            "state": "present",
+            "sha256": "8296849646fb63b2a592acd1e68f4a0ca8e385e74d64b5d19a8b0bb0bab9b801"
+          },
+          {
+            "path": "src/shell/AppShell.tsx",
+            "state": "present",
+            "sha256": "819edd48f309245c6f8be7678b999655d20c6b01aadf042efe7b572c0538b749"
+          },
+          {
+            "path": "src/shell/__tests__/breakpoint.test.ts",
+            "state": "present",
+            "sha256": "d128d72fe1af977f5c387be9255a48acc0bde1a4f1a4851269f1e68b8cbe538d"
+          },
+          {
+            "path": "src/shell/__tests__/destinations.test.ts",
+            "state": "present",
+            "sha256": "c01be9080e33249c1ad86e4a428937a58a3d4d1973533501edbadd38668f17fd"
+          },
+          {
+            "path": "src/shell/breakpoint.ts",
+            "state": "present",
+            "sha256": "73dbf5b3195ddd3195f5640a1c631a76bff16cd644cdf60f272f845dfa9aba40"
+          },
+          {
+            "path": "src/shell/destinations.ts",
+            "state": "present",
+            "sha256": "9af8110c179fb3120d12beab14602de08197da6ad056afb264de2a4ff15a720e"
+          },
+          {
+            "path": "src/theme/colors.ts",
+            "state": "present",
+            "sha256": "1b1993c5a761d1820f6ee34cc24c2a6020bad1d7faced879a3978b02be49eb8f"
+          },
+          {
+            "path": "src/types/domain.ts",
+            "state": "present",
+            "sha256": "a9cd0b91fd0b74cb06ecc4d693845cb362162c6a417cd3d6fa3375a5726446e2"
+          },
+          {
+            "path": "src/venue/VenueContext.tsx",
+            "state": "present",
+            "sha256": "25ca04e9507fa7fca21122eb111896b53c63c2e526384e046a3d343163106890"
+          },
+          {
+            "path": "src/venue/trust.ts",
+            "state": "deleted",
+            "sha256": null
+          },
+          {
+            "path": "tailwind.config.js",
+            "state": "present",
+            "sha256": "991068774d53f4d09a389cf12c0fd176b646237bd58c2624a493795d409979ea"
+          },
+          {
+            "path": "tsconfig.json",
+            "state": "present",
+            "sha256": "013afe05d243b910cfb7163c9fc7f182337bca79b01362b6de026ae73e74e7b9"
+          }
+        ]
+      },
+      "harness": {
+        "sha256": "4b5ebb42589f26741db9340391fe26efde68abbe86b7519b4e2d5c0f828d6556",
+        "fileCount": 62,
+        "files": [
+          {
+            "path": ".qa/README.md",
+            "state": "present",
+            "sha256": "82f86baa99c8a95b49b723b3a195ba0f98281b881eac20aecfd538ca5661029e"
+          },
+          {
+            "path": ".qa/agent-device-flows.test.mjs",
+            "state": "present",
+            "sha256": "13b7621edbc013e17f707c8bdb9866c4563e0a78af5ae3c685d2c999ddbf4171"
+          },
+          {
+            "path": ".qa/agent-device-runner.mjs",
+            "state": "present",
+            "sha256": "94b03fc3157967afc21535ea6d5f4ead3df43c37ecf733e402a48c5700893b46"
+          },
+          {
+            "path": ".qa/agent-device-runner.test.mjs",
+            "state": "present",
+            "sha256": "cba8c04c1f5049899a8c7be092eb5f18270d5a4a09e9359518e4a165bec271d3"
+          },
+          {
+            "path": ".qa/build-ux-map.mjs",
+            "state": "present",
+            "sha256": "f996eba01f836a667ad2e4243e055d6cf5e0b54595fec3307aea5fbe95698059"
+          },
+          {
+            "path": ".qa/build-ux-map.test.mjs",
+            "state": "present",
+            "sha256": "8846a8e75fc5f3ca4979420b48f136c3e60704a136377182c2851d9b1ad71640"
+          },
+          {
+            "path": ".qa/evidence-lib.mjs",
+            "state": "present",
+            "sha256": "5b7a2568966863484aac5c23909c1eafdcf2845b8ea02256e0055d322bc4368b"
+          },
+          {
+            "path": ".qa/evidence-lib.test.mjs",
+            "state": "present",
+            "sha256": "ce80624b293d8b5619d607e20a921ca2e117aa7aa785721615ededb77d179e33"
+          },
+          {
+            "path": ".qa/png-evidence.mjs",
+            "state": "present",
+            "sha256": "9bfe28612add43bc0903bf5a4a476766d5f606a95c58712f4affc1ec3ffc1df8"
+          },
+          {
+            "path": ".qa/png-evidence.test.mjs",
+            "state": "present",
+            "sha256": "5b571cf212282da6dae580315d29f629d4286916187c8821b282e7c7d7833992"
+          },
+          {
+            "path": ".qa/publish-order-after-eose.mjs",
+            "state": "present",
+            "sha256": "ab36593a03847804fddfe21c5ebe643648e75083373250e3f540d90f6476ab27"
+          },
+          {
+            "path": ".qa/publish-ux-matrix.mjs",
+            "state": "present",
+            "sha256": "cb4020a83702acd2ea32acf94320510c5a0c77bdb0d1d50fa0b6b8a6f63557d4"
+          },
+          {
+            "path": ".qa/qa-check-in.mjs",
+            "state": "present",
+            "sha256": "245ca9447bdcd8a0bb8787b15e50bf327942d64c0921f34272d64531626e7681"
+          },
+          {
+            "path": ".qa/qa-create-venue.mjs",
+            "state": "present",
+            "sha256": "c08927167b34ab91dbc49f86328ee2ff1a6274f98bf1236bab37d15d9c10ffdb"
+          },
+          {
+            "path": ".qa/qa-entry-lib.mjs",
+            "state": "present",
+            "sha256": "ba706debcfd5bfd642b042d52bffe6ea32d4c507e0d21a53a1a38db4489e23a7"
+          },
+          {
+            "path": ".qa/qa-events.mjs",
+            "state": "present",
+            "sha256": "5874d2d5f66b60011cfa5899a610dbcd1315e9946f17aa81417f27ff1d2399a4"
+          },
+          {
+            "path": ".qa/qa-home.mjs",
+            "state": "present",
+            "sha256": "982f3942deef7419dc02463fbfba19a8a620c9d8296e1253584389d9e2c986da"
+          },
+          {
+            "path": ".qa/qa-invites.mjs",
+            "state": "present",
+            "sha256": "377e168b3f14e51235581de2d9d80154bbd1f85c6de0d711a4d923eef289b22d"
+          },
+          {
+            "path": ".qa/qa-menu.mjs",
+            "state": "present",
+            "sha256": "6c335ddb41bf50251b78558f9314839ced1e93557cf4494dba2061e9e511c87b"
+          },
+          {
+            "path": ".qa/qa-orders-ladder.mjs",
+            "state": "present",
+            "sha256": "df79d293bbf5402306b386c904ff6a634ed1b62bdb4e035c75a3bae1f6602340"
+          },
+          {
+            "path": ".qa/qa-orders-live-wake.mjs",
+            "state": "present",
+            "sha256": "ce277a986ca39cd17b3bc8c84c1d3cd8defa0adf1bc063f248dc749a1514eef3"
+          },
+          {
+            "path": ".qa/qa-orders.mjs",
+            "state": "present",
+            "sha256": "cc395c34479cf9534fe3deaee7d360e97bbf5fb953feb1bc982bd6e905c02e99"
+          },
+          {
+            "path": ".qa/qa-people.mjs",
+            "state": "present",
+            "sha256": "b4cf874b7994348d7827103c51f3a0e9417b1797c0c8d4738a0502e9cff79c52"
+          },
+          {
+            "path": ".qa/qa-settings.mjs",
+            "state": "present",
+            "sha256": "c9f67824dac8e34bfb80e29869fe7d1e9e7db99b1cd6dd6cd09c2ef56f6274f3"
+          },
+          {
+            "path": ".qa/qa-venue-selection.mjs",
+            "state": "present",
+            "sha256": "d3037d6f7bffbc449cadae0df6a2fe48c522b7e5f16de82ddf792f2ac74cbc13"
+          },
+          {
+            "path": ".qa/qa-welcome.mjs",
+            "state": "present",
+            "sha256": "a77a0570b9d56f279074f6f87d393bad49fd1b671d0ecb3df527172366d4b5c4"
+          },
+          {
+            "path": ".qa/relay-bootstrap-check-in.mjs",
+            "state": "present",
+            "sha256": "a3ec80c2d5ee5760e03c853101e5be399d7afa3b241827169882cecbf52d2d80"
+          },
+          {
+            "path": ".qa/relay-bootstrap-create-venue.mjs",
+            "state": "present",
+            "sha256": "a2ef714c42c860e1f8dfe0b2b9688fc5cd5ea6b9cbfb2a3e906c31bde91de826"
+          },
+          {
+            "path": ".qa/relay-bootstrap-events.mjs",
+            "state": "present",
+            "sha256": "a46a2575986200b43177448d0122c9795739e7cc09489daac4ee4c22d3d0f8a7"
+          },
+          {
+            "path": ".qa/relay-bootstrap-home.mjs",
+            "state": "present",
+            "sha256": "4488319e0e6a3f20598f82900fe90f3e4c1534378aace22c3fef300ec97a167e"
+          },
+          {
+            "path": ".qa/relay-bootstrap-invites.mjs",
+            "state": "present",
+            "sha256": "b984f2fefbf3d981db1955d5569c5e7509a75e4bffc025b03ebb8ff4e5dd6bc2"
+          },
+          {
+            "path": ".qa/relay-bootstrap-menu.mjs",
+            "state": "present",
+            "sha256": "d494e9c87b5ec71a8c0f6c3bf6006eb13c8ac757016084325b5171750c584a6f"
+          },
+          {
+            "path": ".qa/relay-bootstrap-orders-ladder.mjs",
+            "state": "present",
+            "sha256": "5d6223f75b1e6dac1b080ee9e96b032d5ae48d1295b99295a6f2c426747f6f28"
+          },
+          {
+            "path": ".qa/relay-bootstrap-people.mjs",
+            "state": "present",
+            "sha256": "5d749cbaa963a2e03582eee1d1dd12a0c01225f61e461ac8ba2897a3b2cfb06c"
+          },
+          {
+            "path": ".qa/relay-bootstrap-settings.mjs",
+            "state": "present",
+            "sha256": "bfab90d6a7a013d6a53ed9224f6691002e1fbdda806f070eb1366e6c3562d630"
+          },
+          {
+            "path": ".qa/relay-bootstrap.mjs",
+            "state": "present",
+            "sha256": "30b8aa91266617d6d31e35a9585e3b9251a434cfaecf856ad724ecfe47906cfb"
+          },
+          {
+            "path": ".qa/relay-lib.mjs",
+            "state": "present",
+            "sha256": "8c950132142387fe1c4f53dfd5c87fc99992e71d3c4b9675e8cf04252083ee61"
+          },
+          {
+            "path": ".qa/relay-screen-scenario.mjs",
+            "state": "present",
+            "sha256": "825aca13f8dcfc20328f0f544455b3274556212065b2186ca5206f4728f62c44"
+          },
+          {
+            "path": ".qa/relay-screen-scenario.test.mjs",
+            "state": "present",
+            "sha256": "58fb064c72a628143110aa6c1c335976cefe7926913c183aaf42ee8d56603e06"
+          },
+          {
+            "path": ".qa/relay-teardown.mjs",
+            "state": "present",
+            "sha256": "93e4bfac5ca258c7e6d0c90b3e3e51a3242b5c83b719e32d3633338e70a78104"
+          },
+          {
+            "path": ".qa/relay-verify.mjs",
+            "state": "present",
+            "sha256": "6c2ed8f2de8b5e5cc43ba0feb5832cd8ba8cca76982300a0f71445befd4d5599"
+          },
+          {
+            "path": ".qa/review-mode.mjs",
+            "state": "present",
+            "sha256": "75d8e48cfb2269169268b685a8ecf347b1be5e39ac7f0cb7606c3fe8b22423ff"
+          },
+          {
+            "path": ".qa/review-mode.test.mjs",
+            "state": "present",
+            "sha256": "13fbad6b2c3cb499ea3f9c7c03469c063023d065c2fd89c3cd8e1495f31f2cfa"
+          },
+          {
+            "path": ".qa/review.mjs",
+            "state": "present",
+            "sha256": "7024d0617d3e19df3aa4aa88ad151a53c6be27a6807554349af48b347fb2933a"
+          },
+          {
+            "path": ".qa/run-suite.mjs",
+            "state": "present",
+            "sha256": "32850bd881c9e87a7503611984e9fd4ff7238ac2975a9739563d66a23e4269ab"
+          },
+          {
+            "path": ".qa/run-suite.test.mjs",
+            "state": "present",
+            "sha256": "2acd811a790e98796e0b1617962d534c7534652aa06faf358eebf7bcaa45bc4a"
+          },
+          {
+            "path": ".qa/test-png.mjs",
+            "state": "present",
+            "sha256": "f10c2fca3449c0a3f10bc4621ac08dec97642390a1026e890e9044d39f1aeeba"
+          },
+          {
+            "path": ".qa/verify-check-in.mjs",
+            "state": "present",
+            "sha256": "077fe1f1b87b656d32595a3590e8edd92aa07df13f7a3a30126b0aea2e2d20cd"
+          },
+          {
+            "path": ".qa/verify-create-venue.mjs",
+            "state": "present",
+            "sha256": "111dbf4b7975fdded83ecaf07b312c0fd9cb074f40bd378cba6445ad7389ec6c"
+          },
+          {
+            "path": ".qa/verify-events.mjs",
+            "state": "present",
+            "sha256": "852a4326ab3c2e9ab713e896732ee990d8bbccc02c96e31f27d6d16418bdad06"
+          },
+          {
+            "path": ".qa/verify-home.mjs",
+            "state": "present",
+            "sha256": "db94cb11a00286d7986d32c7e6f66765ac4f630bfe2eae8012d9bb06c2b63ef7"
+          },
+          {
+            "path": ".qa/verify-invites.mjs",
+            "state": "present",
+            "sha256": "4088bd4fc14519112f27c0bfe32850f89da36d46633b30deae109ee13168287e"
+          },
+          {
+            "path": ".qa/verify-menu.mjs",
+            "state": "present",
+            "sha256": "2815f9fed3d4fb4edfbc938fc0736e892261f37bea884b64cbce6832292059df"
+          },
+          {
+            "path": ".qa/verify-order-accepted.mjs",
+            "state": "present",
+            "sha256": "a1721928ee858e5c225d91b875a4d2da98c214ff3353ca4c9ccce604c62aa1a4"
+          },
+          {
+            "path": ".qa/verify-order-ladder.mjs",
+            "state": "present",
+            "sha256": "37b74dce1d7a5f32d961f021a81037a228241545438b3c67131e0dabd24796f8"
+          },
+          {
+            "path": ".qa/verify-order-live-wake.mjs",
+            "state": "present",
+            "sha256": "be0755a39c06c6a3f0727661704349b979f896548515b2972a45f0903374d74e"
+          },
+          {
+            "path": ".qa/verify-people.mjs",
+            "state": "present",
+            "sha256": "f275c41cc57401bb5e831e086654f1d53ebe1ac375e2f81f56b5aef9dfa81538"
+          },
+          {
+            "path": ".qa/verify-screen-contracts.mjs",
+            "state": "present",
+            "sha256": "436169664921da2aba88dd74673f8d5c7aa2f0c5efd38562747bb6cb657e7356"
+          },
+          {
+            "path": ".qa/verify-settings.mjs",
+            "state": "present",
+            "sha256": "91e5ecbf6827ca4c71062232f4a10ba992916f5145ed2fb387425a11ff7f3acf"
+          },
+          {
+            "path": ".qa/verify-ux-matrix.mjs",
+            "state": "present",
+            "sha256": "2e3046072a5b26b0812c4566b73d4f519311695b5301a47adfb763d2c824cd23"
+          },
+          {
+            "path": ".qa/verify-ux-matrix.test.mjs",
+            "state": "present",
+            "sha256": "a987225cadc8da45afc1a82e4d279198b13ab9c645575170920aa6b1f8491a6d"
+          },
+          {
+            "path": "scripts/emulator-headless.sh",
+            "state": "present",
+            "sha256": "7612832415b0415731ab544fe13bf8fb4d5169cf69cae3ccc20c7452ff3622fb"
+          }
+        ]
+      },
+      "flows": {
+        "sha256": "fb89f957bc114874a3252ac8ab85fde01f2009b3087d1aeb9f83db243284f1f5",
+        "fileCount": 20,
+        "files": [
+          {
+            "path": "e2e/flows/00-welcome.ad",
+            "state": "present",
+            "sha256": "8814ee2775d58a21e7bd42b2d3e17ff9f3ff46c9369c0a3c1a80ea4a532a07cd"
+          },
+          {
+            "path": "e2e/flows/05-venue-selection.ad",
+            "state": "present",
+            "sha256": "1f902461b0fc35547fb6c38c3cc380d2c5645697eae92043de422a44a1f6270c"
+          },
+          {
+            "path": "e2e/flows/10-orders.ad",
+            "state": "present",
+            "sha256": "2c18067dc9e7fb176cd60d09028276320f67702799edc4efa0eaf020c07a0927"
+          },
+          {
+            "path": "e2e/flows/11-orders-ladder.phone.ad",
+            "state": "present",
+            "sha256": "290712a2fda4aa3d34272dd391b6869fb6fcf107fe73d51d22c8237512fb3931"
+          },
+          {
+            "path": "e2e/flows/11-orders-ladder.tablet.ad",
+            "state": "present",
+            "sha256": "ad1c6f8626ad172d2c33c2184ece2bc31b48aef7bd7b67a2c0293b70f927ba56"
+          },
+          {
+            "path": "e2e/flows/20-menu.phone.ad",
+            "state": "present",
+            "sha256": "9210444efccaeb1aec98f412ab6e6f8ac8432953ee9db620a41d8ff6e44bfa2c"
+          },
+          {
+            "path": "e2e/flows/20-menu.tablet.ad",
+            "state": "present",
+            "sha256": "5ee1539f2e3a3c2701f2d239226542b608f35b4abec089da3194d29cac2e0489"
+          },
+          {
+            "path": "e2e/flows/30-events.phone.ad",
+            "state": "present",
+            "sha256": "004896e663f7748ada0abaa43e39c85d58d02a2af0ed48c6578f4a7127dcfba0"
+          },
+          {
+            "path": "e2e/flows/30-events.tablet.ad",
+            "state": "present",
+            "sha256": "53e138bf788972702601f8172edda9ae2bd875ea736731e997afd857f0665a40"
+          },
+          {
+            "path": "e2e/flows/31-check-in.phone.ad",
+            "state": "present",
+            "sha256": "6f919e658a4624646221aabcaa0c0202763841de1f1a376549219c6495407ffd"
+          },
+          {
+            "path": "e2e/flows/31-check-in.tablet.ad",
+            "state": "present",
+            "sha256": "78fb441d1d59a7b54562d4f23eb9426d06f9163830ac6d24e7826b9cd733e905"
+          },
+          {
+            "path": "e2e/flows/40-people.phone.ad",
+            "state": "present",
+            "sha256": "5022f02965bd34d693f204ed822859e79de2e3cbdea1772f3cae4b4f09361e3b"
+          },
+          {
+            "path": "e2e/flows/40-people.tablet.ad",
+            "state": "present",
+            "sha256": "cefb5e5d4cbf1ad4d0865b256810d353f6376e896c75d37a27b11267662585e2"
+          },
+          {
+            "path": "e2e/flows/50-invites.phone.ad",
+            "state": "present",
+            "sha256": "b4bed0ade2e9125903193656649d71951038c1cbf56bde4c2c1759197870f1d6"
+          },
+          {
+            "path": "e2e/flows/50-invites.tablet.ad",
+            "state": "present",
+            "sha256": "fd5231c404f0062e56b59a3dcc44b94514b8607756b12cfd897ccc3116b316f6"
+          },
+          {
+            "path": "e2e/flows/60-settings.phone.ad",
+            "state": "present",
+            "sha256": "38cecd2d055a65b4562762e032b390a37ae29877f55f3da4b4e82e78f46c4e98"
+          },
+          {
+            "path": "e2e/flows/60-settings.tablet.ad",
+            "state": "present",
+            "sha256": "9171d72c659928baacaa95520324250b19d77c104a0b2d85118d668052b8ef1d"
+          },
+          {
+            "path": "e2e/flows/70-create-venue.ad",
+            "state": "present",
+            "sha256": "2211f22711bd854c38bca087b53b0f49f120920b1cff12032c121c3236487973"
+          },
+          {
+            "path": "e2e/flows/80-home.phone.ad",
+            "state": "present",
+            "sha256": "393029b627e38926791be2890c6e74d66b70c57428f102f085cd61ad16a457a1"
+          },
+          {
+            "path": "e2e/flows/80-home.tablet.ad",
+            "state": "present",
+            "sha256": "fee9fe853e522106c5d456b739d4b066afb31b27bb427a7c5cf70c8641f4737b"
+          }
+        ]
+      },
+      "lockfile": {
+        "sha256": "e2bd5cc715f29b793a1f9790a87eca8737cd65fc4abf1ad3c25f79ef937ee733",
+        "fileCount": 1,
+        "files": [
+          {
+            "path": "package-lock.json",
+            "state": "present",
+            "sha256": "db0efbffeae0ee30b99f358d90ad372817edce295c2df779e0448e19b0ef4e2d"
+          }
+        ]
+      }
+    }
+  },
+  "fastGates": [
+    {
+      "name": "jest-coverage",
+      "status": "pass",
+      "code": 0,
+      "signal": null,
+      "timedOut": false
+    },
+    {
+      "name": "typecheck",
+      "status": "pass",
+      "code": 0,
+      "signal": null,
+      "timedOut": false
+    },
+    {
+      "name": "lint",
+      "status": "pass",
+      "code": 0,
+      "signal": null,
+      "timedOut": false
+    },
+    {
+      "name": "screen-contracts",
+      "status": "pass",
+      "code": 0,
+      "signal": null,
+      "timedOut": false
+    },
+    {
+      "name": "harness-tests",
+      "status": "pass",
+      "code": 0,
+      "signal": null,
+      "timedOut": false
+    },
+    {
+      "name": "android-debug-apk",
+      "status": "pass",
+      "code": 0,
+      "signal": null,
+      "timedOut": false
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "welcome",
+      "status": "pass",
+      "retriesUsed": 0,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "pass",
+          "code": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      ],
+      "verifiers": []
+    },
+    {
+      "name": "venue-selection",
+      "status": "pass",
+      "retriesUsed": 0,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "pass",
+          "code": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      ],
+      "verifiers": [
+        {
+          "name": "relay-verify",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        }
+      ]
+    },
+    {
+      "name": "orders",
+      "status": "pass",
+      "retriesUsed": 0,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "pass",
+          "code": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      ],
+      "verifiers": [
+        {
+          "name": "relay-verify",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        },
+        {
+          "name": "verify-order-accepted",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        }
+      ]
+    },
+    {
+      "name": "orders-ladder",
+      "status": "pass",
+      "retriesUsed": 0,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "pass",
+          "code": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      ],
+      "verifiers": [
+        {
+          "name": "relay-verify",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        },
+        {
+          "name": "verify-order-ladder",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        }
+      ]
+    },
+    {
+      "name": "menu",
+      "status": "pass",
+      "retriesUsed": 0,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "pass",
+          "code": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      ],
+      "verifiers": [
+        {
+          "name": "relay-verify",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        },
+        {
+          "name": "verify-menu",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        }
+      ]
+    },
+    {
+      "name": "events",
+      "status": "pass",
+      "retriesUsed": 0,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "pass",
+          "code": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      ],
+      "verifiers": [
+        {
+          "name": "relay-verify",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        },
+        {
+          "name": "verify-events",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        }
+      ]
+    },
+    {
+      "name": "check-in",
+      "status": "pass",
+      "retriesUsed": 0,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "pass",
+          "code": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      ],
+      "verifiers": [
+        {
+          "name": "relay-verify",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        },
+        {
+          "name": "verify-check-in",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        }
+      ]
+    },
+    {
+      "name": "people",
+      "status": "pass",
+      "retriesUsed": 0,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "pass",
+          "code": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      ],
+      "verifiers": [
+        {
+          "name": "relay-verify",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        },
+        {
+          "name": "verify-people",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        }
+      ]
+    },
+    {
+      "name": "invites",
+      "status": "pass",
+      "retriesUsed": 0,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "pass",
+          "code": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      ],
+      "verifiers": [
+        {
+          "name": "relay-verify",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        },
+        {
+          "name": "verify-invites",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        }
+      ]
+    },
+    {
+      "name": "settings",
+      "status": "pass",
+      "retriesUsed": 0,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "pass",
+          "code": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      ],
+      "verifiers": [
+        {
+          "name": "relay-verify",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        },
+        {
+          "name": "verify-settings",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        }
+      ]
+    },
+    {
+      "name": "home",
+      "status": "pass",
+      "retriesUsed": 0,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "pass",
+          "code": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      ],
+      "verifiers": [
+        {
+          "name": "relay-verify",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        },
+        {
+          "name": "verify-home",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        }
+      ]
+    },
+    {
+      "name": "create-venue",
+      "status": "pass",
+      "retriesUsed": 0,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "pass",
+          "code": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      ],
+      "verifiers": [
+        {
+          "name": "verify-create-venue",
+          "status": "pass",
+          "basis": "scenario runner exits zero only after its independent verifier completes"
+        }
+      ]
+    }
+  ],
+  "apk": {
+    "packageName": "life.crays.board",
+    "installedThisRun": true,
+    "host": {
+      "path": "android/app/build/outputs/apk/debug/app-debug.apk",
+      "sha256": "e6b5f2b1347cd0489ac2be91ae34ff638c7c027ff1590e486fcf9dc3d7693169",
+      "size": 329656467
+    },
+    "installed": {
+      "basePath": "/data/app/~~6XaIbEwtslx3frnw1CvJHw==/life.crays.board-X553dv0J7L8ooGhVTr9BQQ==/base.apk",
+      "sha256": "e6b5f2b1347cd0489ac2be91ae34ff638c7c027ff1590e486fcf9dc3d7693169",
+      "size": 329656467,
+      "codePath": "/data/app/~~6XaIbEwtslx3frnw1CvJHw==/life.crays.board-X553dv0J7L8ooGhVTr9BQQ==",
+      "versionCode": 1,
+      "versionName": "0.1.0",
+      "lastUpdateTime": "2026-08-23 11:37:09",
+      "signingRecord": "PackageSignatures{b2cc6ce version:2, signatures:[51ed3f60], past signatures:[]}",
+      "observations": [
+        "pm path",
+        "exec-out cat <base.apk>",
+        "dumpsys package"
+      ]
+    }
+  },
+  "device": {
+    "serial": "emulator-5554",
+    "avd": "crays_samsung_tab",
+    "model": "sdk_gphone64_x86_64",
+    "product": "emu64xa",
+    "apiLevel": 34,
+    "width": 1600,
+    "height": 1000,
+    "density": 240,
+    "orientation": "landscape",
+    "widthDp": 1067,
+    "observations": {
+      "size": {
+        "physical": [
+          1600,
+          1000
+        ],
+        "override": null
+      },
+      "density": {
+        "physical": 240,
+        "override": null
+      },
+      "surfaceRotation": 0,
+      "userRotation": 0,
+      "commands": [
+        "wm size",
+        "wm density",
+        "dumpsys input",
+        "settings get system user_rotation"
+      ]
+    }
+  },
+  "coordinator": {
+    "url": "http://127.0.0.1:7831",
+    "mode": "managed",
+    "implementationSha256": "56ec55252f807ec2b0f5848b96ea5427bec7af0915f3e418f6ac30d46d8daacf",
+    "health": {
+      "status": 200,
+      "bodySha256": "2689367b205c16ce32ed4200942b8b8b1e262dfc70d9bc9fbc77c49699a4f1df"
+    },
+    "identityDigest": "fb3b40290b2b3c821c8cacfd57e10cfed5316986f3e841b50d96600b50ef32a6",
+    "deviceUrl": "http://10.0.2.2:7831"
+  },
+  "metro": {
+    "mode": "external",
+    "pid": 1849461,
+    "cwd": "/root/code/crays-board",
+    "argv": [
+      "node",
+      "/root/code/crays-board/node_modules/.bin/expo",
+      "start",
+      "--dev-client",
+      "--port",
+      "8090"
+    ],
+    "processStartTicks": "1070359899",
+    "publicCoordinatorUrl": "http://10.0.2.2:7831",
+    "url": "http://127.0.0.1:8090",
+    "bundledRevisionDigest": "c7bf6da4d0f142fb0581b585f8e852efac867770eb960cf6d00a0c5593c752a8"
+  },
+  "updatedAt": "2026-08-23T09:46:01.242Z",
+  "completedAt": "2026-08-23T09:46:01.242Z"
+}

@@ -44,7 +44,7 @@ export default function WelcomeScreen() {
         accessibilityRole="button"
         accessibilityLabel="Create venue"
         onPress={() => router.push("/create-venue")}
-        style={({ pressed }) => [styles.primaryCard, pressed && styles.pressed]}
+        style={styles.primaryCard}
       >
         <View style={styles.primaryIconTile}>
           <MaterialCommunityIcons name="store-outline" size={28} color={colors.white} />
@@ -60,7 +60,7 @@ export default function WelcomeScreen() {
         accessibilityRole="button"
         accessibilityLabel="Sign in"
         onPress={() => router.push("/sign-in")}
-        style={({ pressed }) => [styles.secondaryCard, pressed && styles.pressed]}
+        style={styles.secondaryCard}
       >
         <View style={styles.secondaryIconTile}>
           <MaterialCommunityIcons name="account-outline" size={28} color={colors.ink} />
@@ -78,7 +78,7 @@ export default function WelcomeScreen() {
             accessibilityRole="button"
             accessibilityLabel={path.label}
             onPress={() => router.push("/sign-in")}
-            style={({ pressed }) => [styles.pathButton, pressed && styles.pressed]}
+            style={styles.pathButton}
           >
             <MaterialCommunityIcons name={path.icon} size={24} color={colors.ink} />
             <Text style={styles.pathLabel}>{path.label}</Text>

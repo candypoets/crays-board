@@ -2,8 +2,8 @@
 import { runRelayScreenScenario } from './relay-screen-scenario.mjs';
 
 try {
-  runRelayScreenScenario({
-    flow: 'maestro/flows/10-orders.yaml',
+  await runRelayScreenScenario({
+    flow: 'e2e/flows/10-orders.ad',
     scenario: 'orders',
     verifiers: ['.qa/verify-order-accepted.mjs'],
   });

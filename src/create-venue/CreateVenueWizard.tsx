@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getActivePubkey } from "@/account/account";
 import { BrandMark } from "@/components/BrandMark";
@@ -48,6 +49,7 @@ const INTENTION_LABELS: { key: keyof SetupIntentions; title: string; description
 export function CreateVenueWizard({ onExit, onOpenVenue }: { onExit: () => void; onOpenVenue: () => void }) {
   const breakpoint = useBreakpoint();
   const phone = breakpoint === "phone";
+  const insets = useSafeAreaInsets();
   const { setVenue } = useVenue();
 
   const [phase, setPhase] = useState<"form" | "provisioning" | "success">("form");
@@ -160,6 +162,7 @@ export function CreateVenueWizard({ onExit, onOpenVenue }: { onExit: () => void;
         slug={slug}
         address={draft.address}
         result={result}
+        bottomInset={insets.bottom}
         onBackToReview={() => {
           setPhase("form");
           setStep(3);
@@ -170,7 +173,7 @@ export function CreateVenueWizard({ onExit, onOpenVenue }: { onExit: () => void;
   }
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, phone && styles.rootPhone]}>
       {/* Progress rail (tablet) / compact stepper (phone). */}
       <View style={[styles.rail, phone && styles.railPhone]}>
         <Text style={styles.railKicker}>NEW VENUE</Text>
@@ -434,7 +437,7 @@ function ServiceStep({
                 onChoose("create");
                 onInstall("create");
               }}
-              style={({ pressed }) => [styles.accountChoice, pressed && styles.pressed]}
+              style={styles.accountChoice}
             >
               <MaterialCommunityIcons name="account-plus-outline" size={22} color={colors.pink} />
               <View style={styles.accountChoiceCopy}>
@@ -448,7 +451,7 @@ function ServiceStep({
               accessibilityRole="button"
               disabled={accountBusy}
               onPress={() => onChoose("import")}
-              style={({ pressed }) => [styles.accountChoice, pressed && styles.pressed]}
+              style={styles.accountChoice}
             >
               <MaterialCommunityIcons name="upload-outline" size={22} color={colors.ink} />
               <View style={styles.accountChoiceCopy}>
@@ -596,6 +599,7 @@ function ProvisioningOrSuccess({
   slug,
   address,
   result,
+  bottomInset,
   onBackToReview,
   onOpenVenue,
 }: {
@@ -607,6 +611,7 @@ function ProvisioningOrSuccess({
   slug: string;
   address: string;
   result: ProvisionResult | null;
+  bottomInset: number;
   onBackToReview: () => void;
   onOpenVenue: () => void;
 }) {
@@ -618,31 +623,37 @@ function ProvisioningOrSuccess({
       { label: "Room discovery", value: "Action needed", tone: "warning" },
     ];
     return (
-      <ScrollView testID="create-venue-success-screen" contentContainerStyle={[styles.successWrap, phone && styles.successWrapPhone]}>
-        <Badge label="Venue created" tone="success" />
-        <Text style={[styles.successTitle, phone && styles.successTitlePhone]}>{draftName.trim()} is ready to welcome people.</Text>
-        <Text style={styles.successCopy}>The venue profile is published and this device has Owner access.</Text>
+      <View testID="create-venue-success-screen" style={styles.successScreen}>
+        <ScrollView contentContainerStyle={[styles.successWrap, phone && styles.successWrapPhone]}>
+          <Badge label="Venue created" tone="success" />
+          <Text style={[styles.successTitle, phone && styles.successTitlePhone]}>{draftName.trim()} is ready to welcome people.</Text>
+          <Text style={styles.successCopy}>The venue profile is published and this device has Owner access.</Text>
 
-        <Panel style={styles.truthPanel} padded={false}>
-          {truth.map((row) => (
-            <View key={row.label} style={styles.truthRow}>
-              <Text style={styles.truthLabel}>{row.label}</Text>
-              <Badge label={row.value} tone={row.tone} />
+          <Panel style={styles.truthPanel} padded={false}>
+            {truth.map((row) => (
+              <View key={row.label} style={styles.truthRow}>
+                <Text style={styles.truthLabel}>{row.label}</Text>
+                <Badge label={row.value} tone={row.tone} />
+              </View>
+            ))}
+          </Panel>
+
+          <Panel style={styles.venueCard}>
+            <View style={styles.venueMark}><BrandMark size={30} /></View>
+            <View style={styles.venueCardCopy}>
+              <Text style={styles.venueCardName}>{draftName.trim()}</Text>
+              <Text style={styles.venueCardSlug}>@{slug}</Text>
+              {address.trim() ? <Text style={styles.venueCardMeta}>{address.trim()}</Text> : null}
             </View>
-          ))}
-        </Panel>
+          </Panel>
+        </ScrollView>
 
-        <Panel style={styles.venueCard}>
-          <View style={styles.venueMark}><BrandMark size={30} /></View>
-          <View style={styles.venueCardCopy}>
-            <Text style={styles.venueCardName}>{draftName.trim()}</Text>
-            <Text style={styles.venueCardSlug}>@{slug}</Text>
-            {address.trim() ? <Text style={styles.venueCardMeta}>{address.trim()}</Text> : null}
+        <View style={[styles.successAction, { paddingBottom: Math.max(bottomInset, 12) }]}>
+          <View style={styles.successActionInner}>
+            <Button label="Open venue" icon="arrow-right" testID="cv-open-venue-button" onPress={onOpenVenue} />
           </View>
-        </Panel>
-
-        <Button label="Open venue" icon="arrow-right" testID="cv-open-venue-button" onPress={onOpenVenue} />
-      </ScrollView>
+        </View>
+      </View>
     );
   }
 
@@ -696,6 +707,7 @@ function ProvisioningOrSuccess({
 
 const styles = StyleSheet.create({
   root: { flex: 1, flexDirection: "row", backgroundColor: colors.paper },
+  rootPhone: { flexDirection: "column" },
   rail: { width: 240, backgroundColor: colors.night, padding: 24, gap: 18 },
   railPhone: { width: "100%", paddingVertical: 14, paddingHorizontal: 16, gap: 10 },
   railKicker: { color: colors.coral, fontSize: 11, lineHeight: 15, fontWeight: "900", letterSpacing: 1 },
@@ -786,8 +798,11 @@ const styles = StyleSheet.create({
   errorText: { color: colors.danger, fontSize: 14, lineHeight: 20, fontWeight: "700" },
   errorHint: { color: colors.inkMuted, fontSize: 12, lineHeight: 17 },
   provisioningHint: { color: colors.inkMuted, fontSize: 13, lineHeight: 18 },
+  successScreen: { flex: 1, backgroundColor: colors.paper },
   successWrap: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 36, gap: 18, backgroundColor: colors.paper },
   successWrapPhone: { padding: 22 },
+  successAction: { flexShrink: 0, alignItems: "center", paddingTop: 12, paddingHorizontal: 22, backgroundColor: colors.paper },
+  successActionInner: { width: "100%", maxWidth: 480, alignItems: "center" },
   successTitle: { color: colors.ink, fontSize: 32, lineHeight: 39, fontWeight: "800", letterSpacing: -0.8, textAlign: "center", maxWidth: 640 },
   successTitlePhone: { fontSize: 26, lineHeight: 32 },
   successCopy: { color: colors.inkMuted, fontSize: 14, lineHeight: 21, textAlign: "center", maxWidth: 520 },

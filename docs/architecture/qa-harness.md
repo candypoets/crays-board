@@ -8,7 +8,7 @@ It includes:
 
 - provisioning isolated venue infrastructure or a precisely scoped service fixture;
 - seeding correctly signed, deterministic events;
-- driving the public React Native UI with Maestro;
+- driving the public React Native UI with native Agent Device `.ad` scripts;
 - querying the authoritative relay or service independently after the UI action;
 - checking signatures, authorities, tags, transitions, idempotency, and forbidden side effects;
 - removing only infrastructure, processes, app state, and files owned by the scenario.
@@ -18,10 +18,33 @@ It excludes:
 - replacing production boundaries with a JavaScript store and calling that integration proof;
 - using rendered success text as proof of persistence;
 - sharing a mutable “demo venue” between automated scenarios;
-- putting private keys, invite tokens, payment URLs, or presentation payloads in persistent QA state or logs;
+- putting private keys, payment credentials, invite tokens, or presentation
+  payloads in logs or retained diagnostic artifacts;
 - broad cleanup commands that may delete another project or active run.
 
 Each executable entry point is named `.qa/qa-<screen-or-workflow>.mjs`. A passing scenario exits only after independent verification. A failing scenario retains non-secret diagnostic artifacts and still performs scoped teardown in `finally`.
+
+### Release-evidence provenance
+
+A visual map is publishable evidence only when its phone and tablet captures
+bind both halves of the development client: the installed native APK and the
+JavaScript served by Metro. Each complete profile emits a hashed
+`run-receipt.json`. The receipt inventories actual working-tree bytes for
+application/runtime source, the QA harness and device scripts, Agent Device flows,
+and the npm lockfile, including relevant untracked files and tracked deletions.
+The suite rejects a revision change during capture; paired publication rejects
+any component mismatch and rechecks the receipt against the current worktree
+immediately before atomic canonical-map replacement.
+
+The receipt contains structured fast-gate, scenario-attempt, retry, and
+independent-verifier results. It proves host/installed APK byte equality by
+hashing the device's installed `base.apk`, records package-manager version and
+signing observations, identifies the coordinator implementation (managed
+binary hash or required external identity hash), and records device geometry,
+density, rotation, emulator, model, and API level from observed ADB commands.
+Canonical PNGs must pass chunk CRC, compressed-data, scanline, dimension, and
+manifest-hash validation. Requested profile constants remain acceptance
+contracts; they are never substituted for observed receipt fields.
 
 ## Source workflow
 
@@ -38,9 +61,18 @@ The reusable idea is the boundary discipline, not the client’s specific fixtur
 
 ## Current repository state
 
-As of 2026-08-03, the Board repository has the Expo/React Native prototype, Jest configuration, generated Android project, and sample-data screens. It does not yet have `docs/screens/`, Maestro flows, `.qa` runners, relay integration, or the Board-specific `nipworker` data layer. The architecture below is therefore an implementation target, not a claim that end-to-end QA already exists.
+As of 2026-08-21, the repository has the contract registry, native `.ad` flows,
+screen-specific `.qa` runners, isolated coordinator/relay provisioning,
+independent relay/service verifiers, scoped teardown, and the Board
+`nipworker` data layer. Relay scenarios bootstrap NIP-97 trust from the relay's
+NIP-11 root key and root-signed `31727` community anchor. Orders, Menu, Events,
+Check-in, People, Invites, Settings, Home, and Create Venue all have executable
+vertical-slice contracts in addition to the UI-only entry scenarios.
 
-The first useful milestone is not an empty directory tree or a giant suite. It is one reliable canary that provisions an isolated venue, displays one signed pending order through the public app, accepts it through the UI, independently verifies one exact `37237` event, proves double-tap idempotency, and tears down. That slice validates the harness boundary before it is generalized.
+The original canary remains the smallest relay proof: provision one isolated
+venue, display one signed pending order through the public app, accept it,
+independently verify the retained `37237` current status, prove repeat-tap and
+relaunch idempotency, and tear down.
 
 ## Test-layer responsibilities
 
@@ -48,7 +80,7 @@ The first useful milestone is not an empty directory tree or a giant suite. It i
 | --- | --- | --- |
 | Pure Jest tests | parsers, projections, permission decisions, validation, state machines, sorting, tag creation | native routing, relay persistence, service effects |
 | React Native Testing Library | component states, accessible names, action enablement, local errors, focus behavior | native camera/browser behavior or authoritative writes |
-| Maestro | public navigation, taps, typing, rotation, back behavior, visible feedback, native handoffs | exact relay events, service database state, or cryptographic validity |
+| Agent Device `.ad` | public navigation, taps, typing, rotation, back behavior, visible feedback, native handoffs | exact relay events, service database state, or cryptographic validity |
 | `.qa` independent verifier | signed relay/service truth caused or consumed by the UI | visual quality or every local rendering branch |
 | Manual physical-device pass | Samsung/iPad camera, keyboard, safe areas, process death, network switching, vendor behavior | repeatable protocol regression coverage |
 
@@ -58,7 +90,7 @@ The first useful milestone is not an empty directory tree or a giant suite. It i
 
 ### Contract registry
 
-- Maps every file under `docs/screens/` to one Maestro flow and one named `.qa` runner.
+- Maps every file under `docs/screens/` to one Agent Device flow and one named `.qa` runner.
 - Fails when a screen is documented without executable coverage or when registered artifacts are missing.
 - May additionally map cross-screen workflow specs under `docs/workflows/`.
 - Does not claim behavioral correctness; it is a fast structural gate.
@@ -66,7 +98,7 @@ The first useful milestone is not an empty directory tree or a giant suite. It i
 ### Scenario runner
 
 - Owns one bootstrap → exercise → verify → teardown lifecycle.
-- Selects fixture family, Maestro flow, verifier set, persona, permission set, device profile, and optional fault plan.
+- Selects fixture family, Agent Device flow, verifier set, persona, permission set, device profile, and optional fault plan.
 - Writes the ownership manifest as soon as each resource is created.
 - Always enters teardown through `try/finally`.
 - Must not implement product projections or use internal app repositories to bypass the public path.
@@ -88,7 +120,8 @@ The first useful milestone is not an empty directory tree or a giant suite. It i
 
 ### Scenario state repository
 
-The default file is `/tmp/qa-crays-board-<scenario>-<run>.json`.
+The default file is `/tmp/qa-crays-board-<scenario>.json`; the state itself
+records the unique run ID.
 
 It may contain:
 
@@ -98,18 +131,24 @@ It may contain:
 - public keys, event IDs, coordinates, expected public values, and permission profile;
 - helper PIDs, exact volume names, ports, and diagnostic artifact locations;
 - durable creation attempt ID and fault boundary for Create Venue scenarios.
+- an opaque invite token when a scenario must exercise the public invite UI;
+- short-lived synthetic presentation payloads when Check-in must type them
+  through the public UI.
 
 It must never contain:
 
 - nsec or private hex values;
-- raw invite tokens after they have been passed ephemerally to the UI;
-- presentation payloads or Cashu proofs;
 - Stripe onboarding/dashboard URLs;
+- production Cashu proofs or payment credentials;
 - unrelated process IDs or resources inferred by a broad name match.
+
+State files are mode `0600`, are never copied into diagnostic artifacts, and
+are deleted by scoped teardown. Fixture invite tokens and presentations must
+never be logged or rendered separately.
 
 ### Native UI exerciser
 
-- Launches the development client and drives only public routes and controls with Maestro.
+- Launches the development client and drives only public routes and controls with Agent Device.
 - Receives public fixture values through environment variables or a test-only, release-disabled entry route.
 - Uses stable accessibility identifiers for controls and stable semantic text for user outcomes.
 - Captures screenshots at decision points and failures.
@@ -151,7 +190,7 @@ Use for welcome layout, local validation, phone More navigation, unsaved-change 
 
 ```text
 clear exact app state
-  -> run Maestro
+  -> run Agent Device
   -> optionally inspect public-safe device diagnostics
   -> clear exact app state
 ```
@@ -163,7 +202,7 @@ Use for Home projections, Orders, Menu, Events, People, Roles, Memberships, and 
 ```text
 provision relay
   -> seed signed fixtures
-  -> run Maestro
+  -> run Agent Device
   -> query relay independently
   -> run screen-specific verifiers
   -> teardown
@@ -176,7 +215,7 @@ Use for invites, media upload, coordinator provisioning, and Stripe handoff.
 ```text
 start isolated service boundary
   -> configure deterministic response/fault
-  -> run Maestro
+  -> run Agent Device
   -> query service audit truth
   -> verify relay follow-up when applicable
   -> teardown
@@ -215,7 +254,10 @@ editable draft
   -> complete | complete with repair action
 ```
 
-The harness injects a failure after each durable boundary, kills or relaunches the app, resumes the same attempt, and proves that no second relay or destructive relay-set replacement occurred.
+The implemented Create Venue slice covers the happy path. Planned durable-
+boundary scenarios will inject a failure after each boundary, kill or relaunch
+the app, resume the same attempt, and prove that no second relay or destructive
+relay-set replacement occurred.
 
 ## Core invariants
 
@@ -223,16 +265,17 @@ The harness injects a failure after each durable boundary, kills or relaunches t
 2. A mutation is confirmed only after the required relay/service acknowledgement.
 3. Every signed event is verified against the expected signer and venue authority relationship.
 4. UI permission filtering and route guards are tested, but the relay/service remains the security boundary.
-5. Order and check-in state writes use kind `37237`; legacy `27237` is read-only during migration.
-6. Status mutations are forward-only where required, strictly monotonic per context, deterministic on ties, and idempotent under repeat taps/relaunch.
-7. Addressable definitions retain the same `d` for edits and use a new `d` only for a meaningfully new offer.
-8. Invite creation/redemption is exact-URL/method/payload bound, account-bound, expiry-aware, redemption-limited, and idempotent.
-9. Paid events are not visible as paid events without a confirmed access definition.
-10. Check-in accepts one valid, live, venue/event-bound presentation and rejects invalid, expired, revoked, wrong-context, exhausted, and duplicate presentations without an extra fulfillment.
-11. Venue switching disposes old work; late old-venue acknowledgements cannot alter the new venue UI or relay.
-12. A Create Venue attempt owns at most one allocated relay and never overwrites pre-existing relay-set entries.
-13. Logs, QA state, screenshots, and analytics contain no secrets or raw security credentials.
-14. Teardown deletes only resources explicitly recorded as owned by the scenario.
+5. Trust derives from the relay's NIP-11 root key and the root-signed NIP-97 community anchor (kind `31727`); entitlement truth resolves only from the pinned venue relay.
+6. Order and check-in state writes use kind `37237` with NIP-97 contexts (`d = order:<order-ref>` / `event:<coordinate>` plus the matching context tag); no legacy status kinds are read or written.
+7. Status mutations are forward-only where required, strictly monotonic per context, resolved by `created_at` then lowest event id, and idempotent under repeat taps/relaunch (same context `d`, one retained status per author+context).
+8. Addressable definitions retain the same `d` for edits and use a new `d` only for a meaningfully new offer.
+9. Invite creation/redemption is exact-URL/method/payload bound, account-bound, expiry-aware, redemption-limited, and idempotent.
+10. Paid events are not visible as paid events without a confirmed access definition.
+11. Check-in accepts one valid, live, venue/event-bound presentation and rejects invalid, expired, revoked, wrong-context, exhausted, and duplicate presentations without an extra fulfillment.
+12. Venue switching disposes old work; late old-venue acknowledgements cannot alter the new venue UI or relay.
+13. A Create Venue attempt owns at most one allocated relay and never overwrites pre-existing relay-set entries.
+14. Logs, QA state, screenshots, and analytics contain no secrets or raw security credentials.
+15. Teardown deletes only resources explicitly recorded as owned by the scenario.
 
 ## Failure injection
 
@@ -252,36 +295,26 @@ The shared harness should expose named failure points rather than arbitrary slee
 
 Faults must be deterministic and externally observable. A scenario must state which side effects are expected and which are forbidden at the injected boundary.
 
-## Proposed file layout
+## Current file layout
 
 ```text
 docs/screens/<screen>.md
-docs/workflows/<workflow>.md
-maestro/flows/<screen-or-workflow>.yaml
+e2e/flows/<screen-or-workflow>[.<phone|tablet>].ad
 .qa/README.md
-.qa/contracts.mjs
-.qa/run-screen-scenario.mjs
-.qa/run-relay-scenario.mjs
-.qa/run-service-scenario.mjs
-.qa/lib/{ownership,android,relay,services,polling,redaction}.mjs
-.qa/fixtures/{entry,venue,orders,menu,events,people,invites,settings}.mjs
-.qa/verify/{relay,orders,menu,events,roles,invites,create-venue}.mjs
 .qa/qa-<screen-or-workflow>.mjs
+.qa/relay-bootstrap[-<screen>].mjs
+.qa/verify[-<screen-or-workflow>].mjs
+.qa/relay-screen-scenario.mjs
+.qa/{relay-lib,qa-entry-lib,relay-teardown}.mjs
 ```
 
-This is a target architecture, not a requirement to create empty scripts before their contracts exist.
+## Remaining expansion
 
-## Ordered implementation plan
-
-1. Establish the Board app ID, deep-link scheme, development-client launch path, and Samsung-like AVD.
-2. Add the structural registry and one UI-only welcome scenario.
-3. Port the isolated coordinator/relay provisioner, state manifest, polling, Android URL translation, redaction, and scoped teardown from the proven Crays pattern.
-4. Implement the first relay-backed vertical slice: seed one pending order, render it, advance it once, verify exact `37237`, repeat tap, relaunch, and teardown.
-5. Generalize fixture families only after that slice is reliable.
-6. Add Menu and guest-consumer compatibility, then Events/check-in, People/Roles, Invites, and Settings.
-7. Implement Create Venue last among infrastructure primitives but before pilot: it needs stable attempt/resume and deterministic coordinator fault controls.
-8. Add phone/portrait variants to the same semantic workflows rather than cloning all business verifiers.
-9. Run physical Samsung/iPad checks as a release checklist and promote only automatable regressions into the device suite.
+The implemented vertical slices establish the lifecycle and NIP-97 wire
+contracts. Further coverage should add deterministic fault injection, public
+guest-consumer compatibility with `crays-rn`, compact/portrait variants of the
+same semantic flows, and the physical Samsung/iPad release pass. Those extend
+the existing harness; they do not change its ownership or verification model.
 
 ## Harness acceptance checks
 
@@ -293,5 +326,5 @@ This is a target architecture, not a requirement to create empty scripts before 
 - Repeat taps and relaunch do not create duplicate durable writes.
 - A failed scenario still tears down exact owned infrastructure and clears exact app state.
 - Diagnostics remain useful and contain no secrets.
-- A structural gate fails when a screen spec, Maestro flow, or `.qa` runner is missing.
+- A structural gate fails when a screen spec, Agent Device flow, or `.qa` runner is missing.
 - The same semantic workflow can run at tablet landscape, tablet portrait, and phone width without changing product truth assertions.

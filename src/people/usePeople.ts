@@ -4,14 +4,21 @@ import { asKind0, isEoce, isParsedEvent } from "@candypoets/nipworker/utils";
 import { useEffect, useMemo, useState } from "react";
 import { AppState } from "react-native";
 
+import {
+  isNewerAnchor,
+  isSellableDefinition,
+  parseCommunityAnchor,
+  parsePermissionTags,
+  type CommunityAnchor,
+} from "@/access/nip97";
+import { fetchRelayRootPubkey, trustFromAnchor } from "@/access/trust";
 import { getNostrRuntime } from "@/nostr/manager";
-import { KIND_AWARD, KIND_DEFINITION } from "@/nostr/protocol";
+import { KIND_ANCHOR, KIND_AWARD, KIND_BADGE_DEFINITION } from "@/nostr/protocol";
 import { useVenue } from "@/venue/VenueContext";
-import { fetchVenueTrust } from "@/venue/trust";
 
 import { KIND_DELETION } from "./builders";
 import {
-  isPermission,
+  permissionsFromNip97,
   projectPeople,
   projectRoles,
   type PeopleAwardInput,
@@ -32,6 +39,7 @@ export type PeopleResult = {
 };
 
 type Buffer = {
+  anchor: CommunityAnchor | null;
   profiles: Map<string, ProfileInput>;
   awards: Map<string, PeopleAwardInput>;
   definitions: Map<string, PeopleDefinitionInput>;
@@ -39,6 +47,7 @@ type Buffer = {
 };
 
 const emptyBuffer = (): Buffer => ({
+  anchor: null,
   profiles: new Map(),
   awards: new Map(),
   definitions: new Map(),
@@ -47,10 +56,15 @@ const emptyBuffer = (): Buffer => ({
 
 /**
  * Subscription coordinator for the People surface. Owns exactly one stable
- * subscription (`board_people_<sanitized relay>`, kinds 0/5/8/30009), extracts
- * plain inputs at the worker boundary, and folds them through the pure
- * projection in fold.ts. EOSE is the loaded signal. Cleanup unsubscribes on
- * unmount, venue change, and backgrounding.
+ * subscription (`board_people_<sanitized relay>`, kinds 0/5/8/30009/31727),
+ * extracts plain inputs at the worker boundary, and folds them through the
+ * pure projection in fold.ts. EOSE is the loaded signal. Cleanup unsubscribes
+ * on unmount, venue change, and backgrounding.
+ *
+ * Trust is NIP-97: the relay's NIP-11 pubkey is the root key, fetched first;
+ * the subscription then carries the root-signed community anchor, from which
+ * the admins and delegated badge issuer derive. The projection stays loading
+ * until both EOSE and the anchor have arrived.
  *
  * `localRevocations` lets the route fold a just-acknowledged kind 5 in before
  * the relay echo arrives, so a confirmed revocation is never shown as active
@@ -59,30 +73,25 @@ const emptyBuffer = (): Buffer => ({
 export function usePeople(localRevocations: RevocationInput[] = [], retryKey = 0): PeopleResult {
   const { venue, restoring } = useVenue();
   const relayUrl = venue?.relayUrl;
-  const serviceUrl = venue?.serviceUrl;
   const activePubkey = venue?.pubkey;
 
-  const [trust, setTrust] = useState<{ trustedIssuers: ReadonlySet<string>; authorities: ReadonlySet<string> } | null>(
-    null,
-  );
+  const [rootPubkey, setRootPubkey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [buffer, setBuffer] = useState<Buffer>(emptyBuffer);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
-  // Issuer trust (venue-commerce-nip §4): NIP-11 venue authorities (also the
-  // root-admin people source, PRD §8.7) plus the advertised badge issuer.
+  // Trust root (NIP-97 §Trust Model): the relay's NIP-11 pubkey is the only
+  // out-of-band fact; the anchor it signs arrives over the subscription below.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTrust(null);
+    setRootPubkey(null);
     setError(null);
-    if (!relayUrl || !serviceUrl) return;
+    if (!relayUrl) return;
     let cancelled = false;
-    fetchVenueTrust(relayUrl, serviceUrl)
-      .then((venueTrust) => {
-        if (!cancelled) {
-          setTrust({ trustedIssuers: venueTrust.trustedIssuers, authorities: new Set(venueTrust.authorities) });
-        }
+    fetchRelayRootPubkey(relayUrl)
+      .then((pubkey) => {
+        if (!cancelled) setRootPubkey(pubkey.toLowerCase());
       })
       .catch((cause: unknown) => {
         if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
@@ -90,15 +99,16 @@ export function usePeople(localRevocations: RevocationInput[] = [], retryKey = 0
     return () => {
       cancelled = true;
     };
-  }, [relayUrl, serviceUrl, retryKey]);
+  }, [relayUrl, retryKey]);
 
   // The single people subscription (pattern from useOrders: the REQ opens
-  // after a small foreground settle window).
+  // after a small foreground settle window). Gated on the root key so the
+  // anchor can be verified as it arrives.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBuffer(emptyBuffer());
     setLoaded(false);
-    if (!relayUrl) return;
+    if (!relayUrl || !rootPubkey) return;
     if (!getNostrRuntime().manager) {
       setError("The secure Nostr engine is unavailable. Use a Crays development build.");
       return;
@@ -127,6 +137,17 @@ export function usePeople(localRevocations: RevocationInput[] = [], retryKey = 0
       const event = isParsedEvent(message);
       if (!event) return;
       const kind = event.kind();
+
+      if (kind === KIND_ANCHOR) {
+        // Only the root-signed anchor carries authority; latest version wins.
+        const anchor = parseCommunityAnchor(event);
+        if (!anchor || anchor.pubkey.toLowerCase() !== rootPubkey) return;
+        setBuffer((current) => {
+          if (current.anchor && !isNewerAnchor(anchor, current.anchor)) return current;
+          return { ...current, anchor };
+        });
+        return;
+      }
 
       if (kind === KIND_PROFILE) {
         // Kind 0 arrives pre-parsed by the worker (no raw content accessor).
@@ -167,16 +188,18 @@ export function usePeople(localRevocations: RevocationInput[] = [], retryKey = 0
         return;
       }
 
-      if (kind === KIND_DEFINITION) {
+      if (kind === KIND_BADGE_DEFINITION) {
         const d = extractTagValue(event, "d");
         const author = (event.pubkey() ?? "").toLowerCase();
         const id = event.id() ?? "";
         if (!d || !author || !id) return;
-        const address = `${KIND_DEFINITION}:${author}:${d}`;
+        const address = `${KIND_BADGE_DEFINITION}:${author}:${d}`;
         const createdAt = event.createdAt();
         const name = extractTagValue(event, "name");
-        const type = extractTagValue(event, "type");
         const description = extractTagValue(event, "description");
+        // NIP-97 classification comes from the definition's own `t` topic.
+        const topics = extractTagValues(event, "t");
+        const type = topics.includes("role") ? "role" : topics.includes("membership") ? "membership" : undefined;
         const definition: PeopleDefinitionInput = {
           address,
           authorPubkey: author,
@@ -186,10 +209,11 @@ export function usePeople(localRevocations: RevocationInput[] = [], retryKey = 0
           ...(name ? { name } : {}),
           ...(type ? { type } : {}),
           ...(description ? { description } : {}),
-          permissions: extractTagValues(event, "permission").filter(isPermission),
+          permissions: permissionsFromNip97(parsePermissionTags(event)),
+          sellable: isSellableDefinition(event),
         };
         setBuffer((current) => {
-          // Addressable events resolve as the latest per address (§3.1).
+          // Addressable events resolve as the latest per address.
           const previous = current.definitions.get(address);
           if (
             previous &&
@@ -221,7 +245,7 @@ export function usePeople(localRevocations: RevocationInput[] = [], retryKey = 0
           subId,
           [
             {
-              kinds: [KIND_PROFILE, KIND_DELETION, KIND_AWARD, KIND_DEFINITION],
+              kinds: [KIND_PROFILE, KIND_DELETION, KIND_AWARD, KIND_BADGE_DEFINITION, KIND_ANCHOR],
               relays: [relayUrl],
               limit: 500,
               noCache: true,
@@ -247,7 +271,7 @@ export function usePeople(localRevocations: RevocationInput[] = [], retryKey = 0
       appStateSubscription.remove();
       stop();
     };
-  }, [relayUrl]);
+  }, [relayUrl, rootPubkey]);
 
   // Elapsed-time ticker so expiry statuses stay honest without a reload.
   useEffect(() => {
@@ -256,6 +280,8 @@ export function usePeople(localRevocations: RevocationInput[] = [], retryKey = 0
     return () => clearInterval(timer);
   }, [relayUrl]);
 
+  const trust = useMemo(() => (buffer.anchor ? trustFromAnchor(buffer.anchor) : null), [buffer.anchor]);
+
   const people = useMemo(() => {
     if (!trust) return [];
     return projectPeople({
@@ -263,8 +289,7 @@ export function usePeople(localRevocations: RevocationInput[] = [], retryKey = 0
       definitions: [...buffer.definitions.values()],
       revocations: [...buffer.revocations.values(), ...localRevocations],
       profiles: [...buffer.profiles.values()],
-      authorities: trust.authorities,
-      trustedIssuers: trust.trustedIssuers,
+      trust,
       now,
     });
   }, [trust, buffer, localRevocations, now]);
@@ -273,7 +298,7 @@ export function usePeople(localRevocations: RevocationInput[] = [], retryKey = 0
     if (!trust) return [];
     return projectRoles({
       definitions: [...buffer.definitions.values()],
-      trustedIssuers: trust.trustedIssuers,
+      trust,
       ...(activePubkey ? { activePubkey } : {}),
     });
   }, [trust, buffer, activePubkey]);

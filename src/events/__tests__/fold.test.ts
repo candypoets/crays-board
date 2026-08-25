@@ -1,8 +1,10 @@
 /// <reference types="jest" />
 
+import type { CommunityTrust } from "@/access/trust";
 import { filterEvents, projectEvents, type CalendarEventInput, type RsvpInput } from "@/events/fold";
 
 const ADMIN = "a".repeat(64);
+const ROOT = "d".repeat(64);
 const STRANGER = "f".repeat(64);
 const GUEST_A = "b".repeat(64);
 const GUEST_B = "c".repeat(64);
@@ -10,7 +12,8 @@ const NOW = 1_000_000;
 const FUTURE = NOW + 86_400;
 const PAST = NOW - 86_400;
 
-const TRUSTED = new Set([ADMIN]);
+/** NIP-97 trust: anchor admins plus the community root key. */
+const TRUST: CommunityTrust = { rootPubkey: ROOT, admins: new Set([ADMIN]) };
 
 function event(idSuffix: string, overrides: Partial<CalendarEventInput> = {}): CalendarEventInput {
   return {
@@ -45,13 +48,13 @@ function rsvp(
 function project(input: {
   events?: CalendarEventInput[];
   rsvps?: RsvpInput[];
-  trustedIssuers?: ReadonlySet<string>;
+  trust?: CommunityTrust;
   now?: number;
 }) {
   return projectEvents({
     events: input.events ?? [event("1")],
     rsvps: input.rsvps ?? [],
-    trustedIssuers: input.trustedIssuers ?? TRUSTED,
+    trust: input.trust ?? TRUST,
     now: input.now ?? NOW,
   });
 }
@@ -84,6 +87,10 @@ describe("event projection fold", () => {
 
   it("excludes events from untrusted authors", () => {
     expect(project({ events: [event("1", { pubkey: STRANGER })] })).toHaveLength(0);
+  });
+
+  it("counts events authored by the community root key", () => {
+    expect(project({ events: [event("1", { pubkey: ROOT })] })).toHaveLength(1);
   });
 
   it("skips malformed events missing a title or a usable start", () => {
@@ -144,13 +151,13 @@ describe("event tab and search filtering", () => {
   const upcoming = projectEvents({
     events: [event("1", { identifier: "up", title: "Listening room", summary: "Records and tea" })],
     rsvps: [],
-    trustedIssuers: TRUSTED,
+    trust: TRUST,
     now: NOW,
   });
   const past = projectEvents({
     events: [event("2", { identifier: "down", title: "Fermentation table", start: PAST, end: PAST + 3600 })],
     rsvps: [],
-    trustedIssuers: TRUSTED,
+    trust: TRUST,
     now: NOW,
   });
   const all = [...upcoming, ...past];

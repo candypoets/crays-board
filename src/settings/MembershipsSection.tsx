@@ -101,7 +101,7 @@ export function MembershipsSection({ memberships, loaded }: { memberships: Membe
         const publishing = mutation?.phase === "publishing";
         const available = plan.availability === "available";
         return (
-          <Panel key={plan.address} testID="settings-membership-card" style={styles.card}>
+          <Panel key={plan.address} testID={`settings-membership-card-${plan.d}`} style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardTitle}>
                 <Text style={styles.planName}>{plan.name}</Text>
@@ -116,7 +116,7 @@ export function MembershipsSection({ memberships, loaded }: { memberships: Membe
               <View style={styles.toggleGroup}>
                 <Text style={styles.toggleLabel}>{publishing ? "Updating…" : available ? "Available" : "Unavailable"}</Text>
                 <Switch
-                  testID="settings-membership-toggle"
+                  testID={`settings-membership-toggle-${plan.d}`}
                   accessibilityLabel={`${plan.name} availability`}
                   value={available}
                   disabled={publishing}
@@ -126,7 +126,7 @@ export function MembershipsSection({ memberships, loaded }: { memberships: Membe
                 />
               </View>
               <Button
-                testID="settings-membership-edit"
+                testID={`settings-membership-edit-${plan.d}`}
                 label={editing === plan.address ? "Close editor" : "Edit"}
                 tone="secondary"
                 compact

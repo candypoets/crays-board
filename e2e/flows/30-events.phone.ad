@@ -1,0 +1,42 @@
+# EVENT-01/04/08 — phone detail and event-creation journey.
+context platform=android timeout=720000
+env APP_ID=life.crays.board
+
+open "craysboard://qa-handoff?target=events" --metro-port 8090
+wait "id=\"events-screen\"" 60000
+wait text "QA Seed Event" 45000
+find text "2 going" exists
+click "label=\"QA Seed Event\""
+wait "id=\"event-detail-panel\"" 15000
+is visible "id=\"event-checkin-button\""
+screenshot "${AD_ARTIFACTS}/30-events-detail.png"
+scroll down 0.6
+is visible "id=\"event-detail-rsvp-accepted\""
+is visible "id=\"event-detail-rsvp-tentative\""
+is visible "id=\"event-detail-rsvp-declined\""
+scroll up 0.6
+click "id=\"event-detail-close\""
+click "id=\"event-create-button\""
+wait "id=\"event-create-step-details\"" 15000
+fill "id=\"event-field-title\"" "QA Event ${AWARD_ID_PREFIX}"
+fill "id=\"event-field-summary\"" "Created by the events QA flow."
+keyboard dismiss
+click "id=\"event-category-gathering\""
+scroll down 0.6
+click "id=\"event-create-continue\""
+wait "id=\"event-create-step-schedule\"" 15000
+fill "id=\"event-field-date\"" "2027-01-15"
+fill "id=\"event-field-start\"" "18:00"
+fill "id=\"event-field-end\"" "20:00"
+fill "id=\"event-field-capacity\"" "40"
+keyboard dismiss
+scroll down 0.7
+click "id=\"event-create-continue\""
+wait "id=\"event-create-step-admission\"" 15000
+scroll down 0.7
+wait "id=\"event-publish-button\"" 15000
+press "id=\"event-publish-button\"" --double-tap
+wait "id=\"events-screen\"" 30000
+wait text "QA Event ${AWARD_ID_PREFIX}" 60000
+screenshot "${AD_ARTIFACTS}/30-events-created.png"
+close

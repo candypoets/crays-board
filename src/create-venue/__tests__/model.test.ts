@@ -16,6 +16,7 @@ import {
   VENUE_PROFILE_KIND,
   type VenueDraft,
 } from "../model";
+import { publishVenueProfileWithRetry } from "../provision";
 
 const draft = (patch: Partial<VenueDraft> = {}): VenueDraft => ({ ...emptyDraft(), ...patch });
 
@@ -178,5 +179,34 @@ describe("toBase64Url", () => {
   it("handles UTF-8 and url-safe characters", () => {
     expect(toBase64Url("café ☕")).toBe("Y2Fmw6kg4piV");
     expect(toBase64Url("~}?~")).toBe("fn0_fg");
+  });
+});
+
+describe("new relay profile readiness", () => {
+  const template = buildVenueProfileTemplate(draft({ name: "Maison Crays" }));
+
+  it("retries a transient startup rejection and returns the confirmed write", async () => {
+    const publish = jest
+      .fn()
+      .mockRejectedValueOnce(new Error("policy cache warming"))
+      .mockRejectedValueOnce(new Error("policy cache warming"))
+      .mockResolvedValue({ relayUrl: "ws://relay.test", status: "ok" });
+    const delay = jest.fn().mockResolvedValue(undefined);
+
+    await expect(
+      publishVenueProfileWithRetry(template, "ws://relay.test", { publish, delay, timeoutMs: 1_000 }),
+    ).resolves.toEqual({ relayUrl: "ws://relay.test", status: "ok" });
+    expect(publish).toHaveBeenCalledTimes(3);
+    expect(delay).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves the relay error once the bounded retry window closes", async () => {
+    const rejection = new Error("relay rejected profile");
+    const publish = jest.fn().mockRejectedValue(rejection);
+
+    await expect(
+      publishVenueProfileWithRetry(template, "ws://relay.test", { publish, timeoutMs: 0 }),
+    ).rejects.toBe(rejection);
+    expect(publish).toHaveBeenCalledTimes(1);
   });
 });

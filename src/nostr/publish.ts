@@ -7,8 +7,8 @@ export type PublishResult = { relayUrl: string; status: string };
 
 /**
  * Resolve only after one target relay explicitly confirms the write
- * (venue-commerce-nip §6.8: a status write succeeds only after an affirmative
- * acknowledgement; a timeout is never presented as confirmed state).
+ * (the Board write contract treats only an affirmative acknowledgement as
+ * success; a timeout is never presented as confirmed state).
  *
  * Ported from crays-rn src/nostr/publish.ts.
  */

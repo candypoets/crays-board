@@ -1,0 +1,14 @@
+# ORDER-05 — accept exactly once and observe the live relay-confirmed update.
+context platform=android timeout=480000
+env APP_ID=life.crays.board
+
+# The QA runner dispatches the private seed link first. This subscription-free
+# handoff replaces only itself with Orders, avoiding a hidden live screen.
+open "craysboard://qa-handoff?target=orders" --metro-port 8090
+wait "id=\"orders-screen\"" 60000
+wait "id=\"order-card-${AWARD_ID_PREFIX}\"" 30000
+press "id=\"order-accept-button\"" --double-tap
+wait "id=\"order-status-${AWARD_ID_PREFIX}-accepted\"" 15000
+is visible "id=\"order-card-${AWARD_ID_PREFIX}\""
+screenshot "${AD_ARTIFACTS}/10-orders-accepted.png"
+close

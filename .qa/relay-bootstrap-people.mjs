@@ -2,9 +2,9 @@
 // People & roles fixtures (docs/screens/people.md). Extends the standard
 // venue fixture family (profile/product/product-award, required by the shared
 // .qa/relay-verify.mjs) with the people surface fixtures per PRD §8.7 and
-// venue-commerce-nip §3.6/§4, each signed by its proper authority and
+// NIP-97, each signed by its proper authority and
 // round-tripped until queryable:
-//   - role definition 30009 d=qa-role-<run> (type=role, t=role, permissions
+//   - role definition 30009 d=qa-role-<run> (t=role, NIP-97 permissions
 //     events+invites) — admin-signed;
 //   - membership definition 30009 d=qa-membership-<run> — admin-signed;
 //   - active membership award (kind 8, no expiration) to users[0] —
@@ -14,9 +14,8 @@
 //     the deterministic Expired fixture (an already-past NIP-40 expiration
 //     would be dropped by the relay on write, so expiry is expressed through
 //     revocation; both grant nothing and leave the person Expired);
-//   - non-sellable gate badge 30009 d=members (type=badge) + kind 8 grants to
-//     users[0..2] — the relay write gate requires this badge for non-admin
-//     writes; the people projection ignores type=badge definitions;
+//   - temporary profile-writer role (permission 0/write) + awards to
+//     users[0..2], revoked after their kind-0 profiles round-trip;
 //   - kind 0 profiles for the admin and users[0..2], each self-signed.
 //
 // State file (public-safe; never any secret): standard orders fields (run,
@@ -36,12 +35,16 @@ import {
   assert,
   createRelay,
   emulatorUrl,
+  entitlementAwardTags,
   getRelaySecrets,
+  KIND_LISTING,
   loadKeys,
   makePool,
   nip98Header,
+  productListingTags,
   publishUntilStored,
   requireCoordinator,
+  resolveCommunityBootstrap,
   signEvent,
   sleep,
   waitRelayRunning,
@@ -55,7 +58,9 @@ const domainLabel = `craysboardqa-venue-${run}`;
 const itemD = `qa-item-${run}`;
 const roleD = `qa-role-${run}`;
 const membershipD = `qa-membership-${run}`;
+const profileWriterD = `qa-profile-writer-${run}`;
 const ROLE_PERMISSIONS = ['events', 'invites'];
+const ROLE_PERMISSION_TAGS = [['permission', '31923', 'write'], ['permission', 'invites']];
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 if (!Array.isArray(keys.users) || keys.users.length < 3) {
   throw new Error('keys.json exposes fewer than three fixture users');
@@ -89,6 +94,17 @@ writeState({
 });
 
 const pool = makePool();
+
+const secrets = await getRelaySecrets(created.id, keys);
+const issuerSecret = secrets.badge_issuer_secret_key;
+if (!/^[0-9a-f]{64}$/i.test(issuerSecret || '')) throw new Error('relay did not expose a badge issuer secret');
+const issuerPubkey = signEvent({ kind: 1 }, issuerSecret).pubkey;
+const community = await resolveCommunityBootstrap({
+  pool,
+  relayUrl: relay.relay_url,
+  expectedAdmins: [keys.admin.pub],
+  expectedIssuerPubkey: issuerPubkey,
+});
 
 // Invite service smoke (kept from the standard bootstrap; token stored, never logged).
 const inviteEndpoint = `${relay.base_url}/invites`;
@@ -133,32 +149,17 @@ await publish(venueProfile, 'venue hospitality profile (30078/nuts-community-pro
 // b. Sellable single-use product definition (standard orders fixture).
 const product = signEvent(
   {
-    kind: 30009,
-    tags: [
-      ['d', itemD],
-      ['type', 'food'],
-      ['t', 'food'],
-      ['t', 'sellable'],
-      ['name', `QA Miso aubergine ${run}`],
-      ['price', '9.50'],
-      ['currency', 'EUR'],
-      ['max_uses', '1'],
-      ['availability', 'available'],
-    ],
+    kind: KIND_LISTING,
+    tags: productListingTags({ d: itemD, title: `QA Miso aubergine ${run}`, price: '9.50' }),
   },
   keys.admin.priv,
 );
-await publish(product, 'sellable product definition (30009)');
-const productAddress = `30009:${keys.admin.pub}:${itemD}`;
-
-const secrets = await getRelaySecrets(created.id, keys);
-const issuerSecret = secrets.badge_issuer_secret_key;
-if (!/^[0-9a-f]{64}$/i.test(issuerSecret || '')) throw new Error('relay did not expose a badge issuer secret');
-const issuerPubkey = signEvent({ kind: 1 }, issuerSecret).pubkey;
+await publish(product, 'sellable product listing (30402)');
+const productAddress = `${KIND_LISTING}:${keys.admin.pub}:${itemD}`;
 
 // c. Implicit-pending order award for the standard relay verify.
 const award = signEvent(
-  { kind: 8, tags: [['a', productAddress], ['p', activeUser.pub]] },
+  { kind: 8, tags: entitlementAwardTags({ definitionAddress: productAddress, holderPubkey: activeUser.pub }) },
   issuerSecret,
 );
 await publish(award, 'issuer-signed product award (implicit pending order)');
@@ -169,11 +170,10 @@ const roleDefinition = signEvent(
     kind: 30009,
     tags: [
       ['d', roleD],
-      ['type', 'role'],
       ['t', 'role'],
       ['name', 'QA Events host'],
       ['description', 'Welcomes guests, manages events, and handles entry.'],
-      ...ROLE_PERMISSIONS.map((permission) => ['permission', permission]),
+      ...ROLE_PERMISSION_TAGS,
     ],
   },
   keys.admin.priv,
@@ -187,13 +187,9 @@ const membershipDefinition = signEvent(
     kind: 30009,
     tags: [
       ['d', membershipD],
-      ['type', 'membership'],
       ['t', 'membership'],
-      ['t', 'sellable'],
       ['name', 'QA Membership'],
-      ['period', 'monthly'],
-      ['price', '25.00'],
-      ['currency', 'EUR'],
+      ['price', '25.00', 'EUR', 'month'],
       ['availability', 'available'],
     ],
   },
@@ -204,7 +200,14 @@ const membershipAddress = `30009:${keys.admin.pub}:${membershipD}`;
 
 // f. The three membership awards, signed by the venue badge issuer (§4 trust).
 const activeAward = signEvent(
-  { kind: 8, tags: [['a', membershipAddress], ['p', activeUser.pub]] },
+  {
+    kind: 8,
+    tags: entitlementAwardTags({
+      definitionAddress: membershipAddress,
+      holderPubkey: activeUser.pub,
+      topics: ['membership'],
+    }),
+  },
   issuerSecret,
 );
 await publish(activeAward, 'active membership award (users[0])');
@@ -212,18 +215,26 @@ await publish(activeAward, 'active membership award (users[0])');
 const expiringAward = signEvent(
   {
     kind: 8,
-    tags: [
-      ['a', membershipAddress],
-      ['p', expiringUser.pub],
-      ['expiration', String(nowSeconds() + 10 * 24 * 60 * 60)],
-    ],
+    tags: entitlementAwardTags({
+      definitionAddress: membershipAddress,
+      holderPubkey: expiringUser.pub,
+      topics: ['membership'],
+      expiration: nowSeconds() + 10 * 24 * 60 * 60,
+    }),
   },
   issuerSecret,
 );
 await publish(expiringAward, 'expiring membership award (users[1], 10 days)');
 
 const expiredAward = signEvent(
-  { kind: 8, tags: [['a', membershipAddress], ['p', expiredUser.pub]] },
+  {
+    kind: 8,
+    tags: entitlementAwardTags({
+      definitionAddress: membershipAddress,
+      holderPubkey: expiredUser.pub,
+      topics: ['membership'],
+    }),
+  },
   issuerSecret,
 );
 await publish(expiredAward, 'membership award to be revoked (users[2])');
@@ -243,32 +254,39 @@ const expiredRevocation = signEvent(
 );
 await publish(expiredRevocation, 'seeded membership revocation (users[2])');
 
-// g2. Gate badge grants (same pattern as relay-bootstrap-events.mjs): the
-// relay's write gate accepts non-admin writes only from current holders of
-// the required badge 30009:<issuer>:<badge_d> (badge_d=members at creation).
-// The membership awards above reference the admin-signed membership product,
-// which is NOT the gate badge, so without these grants every member-signed
-// kind 0 profile is rejected ("required badge missing"). The definition is
-// non-sellable type=badge, so the people projection (role/membership only)
-// ignores it.
-const membersBadgeAddress = `30009:${issuerPubkey}:members`;
-const membersBadge = signEvent(
+// g2. Temporary, capability-scoped profile writer. Membership is not a
+// blanket write bypass under NIP-97; kind-0 authors need permission 0/write.
+const profileWriterDefinition = signEvent(
   {
     kind: 30009,
     tags: [
-      ['d', 'members'],
-      ['type', 'badge'],
-      ['t', 'badge'],
-      ['name', `QA members badge ${run}`],
+      ['d', profileWriterD],
+      ['t', 'role'],
+      ['name', `QA profile fixture writer ${run}`],
+      ['permission', '0', 'write'],
     ],
   },
-  issuerSecret,
+  keys.admin.priv,
 );
-await publish(membersBadge, 'non-sellable members badge definition (30009)');
+await publish(profileWriterDefinition, 'temporary profile-writer role definition (0/write)');
+const profileWriterAddress = `30009:${keys.admin.pub}:${profileWriterD}`;
+const profileWriterAwards = [];
 for (const [index, user] of [activeUser, expiringUser, expiredUser].entries()) {
-  const grant = signEvent({ kind: 8, tags: [['a', membersBadgeAddress], ['p', user.pub]] }, issuerSecret);
-  await publish(grant, `gate badge grant for users[${index}]`);
+  const grant = signEvent(
+    {
+      kind: 8,
+      tags: entitlementAwardTags({
+        definitionAddress: profileWriterAddress,
+        holderPubkey: user.pub,
+        topics: ['role'],
+      }),
+    },
+    keys.admin.priv,
+  );
+  await publish(grant, `temporary profile-writer award for users[${index}]`);
+  profileWriterAwards.push(grant);
 }
+await sleep(1_500);
 
 // h. Venue-local kind 0 profiles (PRD §8.7: profiles read from the venue relay),
 // each self-signed by its own key.
@@ -285,8 +303,23 @@ for (const [key, displayName] of profiles) {
   );
 }
 
-const stored = await pool.querySync([relay.relay_url], { kinds: [0, 5, 8, 30009, 30078], limit: 100 });
-assert(stored.length >= 16, `independent relay query sees the people fixture family (${stored.length} events)`);
+// Remove the harness-only capability after the self-authored profiles land.
+// The revoked awards remain signed evidence but grant nothing to People.
+const profileWriterRevocations = [];
+for (const [index, grant] of profileWriterAwards.entries()) {
+  const revocation = signEvent(
+    { kind: 5, tags: [['e', grant.id], ['k', '8']] },
+    keys.admin.priv,
+  );
+  await publish(revocation, `revoke temporary profile-writer award for users[${index}]`);
+  profileWriterRevocations.push(revocation);
+}
+
+const stored = await pool.querySync([relay.relay_url], { kinds: [0, 5, 8, 30009, 30402, 31727, 30078], limit: 100 });
+// strfry applies the three kind-5 revocations and omits their deleted
+// temporary profile-writer awards from a normal query. The 19 visible events
+// are therefore the complete current fixture family, not a partial seed.
+assert(stored.length >= 19, `independent relay query sees the NIP-97 people fixture family (${stored.length} events)`);
 pool.close([relay.relay_url]);
 
 writeState({
@@ -300,6 +333,9 @@ writeState({
   emulator_base_url: emulatorUrl(relay.base_url),
   admin_pubkey: keys.admin.pub,
   issuer_pubkey: issuerPubkey,
+  community_root_pubkey: community.rootPubkey,
+  community_anchor_id: community.anchor.id,
+  required_badge_address: community.requiredBadgeAddress,
   user_pubkey: activeUser.pub,
   venue_profile_id: venueProfile.id,
   product_definition_id: product.id,
@@ -317,6 +353,9 @@ writeState({
   expiring_award_id: expiringAward.id,
   expired_award_id: expiredAward.id,
   expired_revocation_id: expiredRevocation.id,
+  profile_writer_address: profileWriterAddress,
+  profile_writer_award_ids: profileWriterAwards.map((event) => event.id),
+  profile_writer_revocation_ids: profileWriterRevocations.map((event) => event.id),
   active_user_pubkey: activeUser.pub,
   expiring_user_pubkey: expiringUser.pub,
   expired_user_pubkey: expiredUser.pub,

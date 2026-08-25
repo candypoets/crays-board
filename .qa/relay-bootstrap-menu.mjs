@@ -4,33 +4,37 @@
  *
  * Provisions the same base fixture family as relay-bootstrap.mjs (venue
  * profile, one sellable product, one issuer-signed award — required by the
- * shared .qa/relay-verify.mjs) and adds three kind 30009 menu definitions
+ * shared .qa/relay-verify.mjs) and adds three kind 30402 menu listings
  * with deterministic `d` values (the relay is fresh per run, so no
  * collisions):
  *
  *   qa-menu-soup      food,  "QA Tomato soup",      6.50 EUR, Mains/1,  available — admin-signed; EDITED by the flow
  *   qa-menu-espresso  drink, "QA Espresso",         3.00 EUR, Drinks/1, available — admin-signed; TOGGLED by the flow
- *   qa-menu-foreign   drink, "QA Foreign lemonade", 4.20 EUR, Drinks/2, available — signed by the relay's badge-issuer
- *                     key (a DIFFERENT trusted key): visible but non-editable for the admin persona (MENU-05)
+ *   qa-menu-foreign   drink, "QA Foreign lemonade", 4.20 EUR, Drinks/2, available — signed by a SECOND anchor
+ *                     admin: visible but non-editable for the active admin persona (MENU-05)
  *
  * State file (/tmp/qa-crays-board-menu.json) fields beyond the base set:
- *   menu_toggle_d / menu_toggle_address          d + 30009 address of the toggled item
+ *   menu_toggle_d / menu_toggle_address          d + 30402 address of the toggled item
  *   menu_edit_d / menu_edit_address              d + address of the edited item
  *   menu_edit_original_name / menu_edit_expected_name
  *   menu_foreign_d / menu_foreign_address        d + address of the foreign-publisher item
- *   menu_foreign_pubkey                          badge-issuer pubkey that signed the foreign item
+ *   menu_foreign_pubkey                          second anchor admin that signed the foreign item
  *   menu_item_ids                                { d: event id } for every seeded menu definition
  */
 import {
   assert,
   createRelay,
   emulatorUrl,
+  entitlementAwardTags,
   getRelaySecrets,
+  KIND_LISTING,
   loadKeys,
   makePool,
   nip98Header,
+  productListingTags,
   publishUntilStored,
   requireCoordinator,
+  resolveCommunityBootstrap,
   signEvent,
   sleep,
   waitRelayRunning,
@@ -43,7 +47,8 @@ const venueDisplayName = `Crays Board QA Venue ${run}`;
 const domainLabel = `craysboardqa-venue-${run}`;
 const itemD = `qa-item-${run}`;
 const holder = keys.users[0];
-if (!holder) throw new Error('keys.json exposes no fixture users');
+const foreignAdmin = keys.users[1];
+if (!holder || !foreignAdmin) throw new Error('keys.json must expose at least two fixture users');
 
 // Deterministic menu fixtures (see header).
 const TOGGLE_D = 'qa-menu-espresso';
@@ -58,7 +63,7 @@ const created = await createRelay(
     name: venueDisplayName,
     description: 'Crays Board relay-backed menu fixtures; safe to delete.',
     domain_label: domainLabel,
-    admin_pubkeys: [keys.admin.pub],
+    admin_pubkeys: [keys.admin.pub, foreignAdmin.pub],
     badge_d: 'members',
   },
   keys,
@@ -79,6 +84,17 @@ writeState({
 });
 
 const pool = makePool();
+
+const secrets = await getRelaySecrets(created.id, keys);
+const issuerSecret = secrets.badge_issuer_secret_key;
+if (!/^[0-9a-f]{64}$/i.test(issuerSecret || '')) throw new Error('relay did not expose a badge issuer secret');
+const issuerPubkey = signEvent({ kind: 1 }, issuerSecret).pubkey;
+const community = await resolveCommunityBootstrap({
+  pool,
+  relayUrl: relay.relay_url,
+  expectedAdmins: [keys.admin.pub, foreignAdmin.pub],
+  expectedIssuerPubkey: issuerPubkey,
+});
 
 // Invite service smoke: prove the scoped service mints a signed token before
 // the scenario runs (mirrors relay-bootstrap.mjs; token in state, never logs).
@@ -125,73 +141,48 @@ await publish(venueProfile, 'venue hospitality profile (30078/nuts-community-pro
 // .qa/relay-verify.mjs; also exercises the unsectioned menu group).
 const product = signEvent(
   {
-    kind: 30009,
-    tags: [
-      ['d', itemD],
-      ['type', 'food'],
-      ['t', 'food'],
-      ['t', 'sellable'],
-      ['name', `QA Miso aubergine ${run}`],
-      ['price', '9.50'],
-      ['currency', 'EUR'],
-      ['max_uses', '1'],
-      ['availability', 'available'],
-    ],
+    kind: KIND_LISTING,
+    tags: productListingTags({ d: itemD, title: `QA Miso aubergine ${run}`, price: '9.50' }),
   },
   keys.admin.priv,
 );
-await publish(product, 'sellable product definition (30009)');
-const productAddress = `30009:${keys.admin.pub}:${itemD}`;
+await publish(product, 'sellable product listing (30402)');
+const productAddress = `${KIND_LISTING}:${keys.admin.pub}:${itemD}`;
 
 // c. Implicit-pending order award, signed by the venue badge issuer secret.
-const secrets = await getRelaySecrets(created.id, keys);
-const issuerSecret = secrets.badge_issuer_secret_key;
-if (!/^[0-9a-f]{64}$/i.test(issuerSecret || '')) throw new Error('relay did not expose a badge issuer secret');
-const issuerPubkey = signEvent({ kind: 1 }, issuerSecret).pubkey;
 const award = signEvent(
-  { kind: 8, tags: [['a', productAddress], ['p', holder.pub]] },
+  { kind: 8, tags: entitlementAwardTags({ definitionAddress: productAddress, holderPubkey: holder.pub }) },
   issuerSecret,
 );
 await publish(award, 'issuer-signed product award (implicit pending order)');
 
 // d. Menu fixtures per the header: two admin-signed sections (Mains, Drinks)
-// plus one definition signed by the badge-issuer key — a different trusted
-// author, visible but non-editable for the admin persona (venue-commerce-nip
-// §3.1: only the original publishing key may edit).
+// plus one definition signed by a second anchor admin — a different trusted
+// author, visible but non-editable for the active admin persona.
 const productTags = ({ d, type, name, price, section, position }) => [
-  ['d', d],
-  ['type', type],
-  ['t', type],
-  ['t', 'sellable'],
-  ['name', name],
-  ['price', price],
-  ['currency', 'EUR'],
-  ['max_uses', '1'],
-  ['availability', 'available'],
-  ['section', section],
-  ['position', String(position)],
+  ...productListingTags({ d, title: name, price, productKind: type, section, position }),
 ];
 
 const soup = signEvent(
-  { kind: 30009, tags: productTags({ d: EDIT_D, type: 'food', name: EDIT_ORIGINAL_NAME, price: '6.50', section: 'Mains', position: 1 }) },
+  { kind: KIND_LISTING, tags: productTags({ d: EDIT_D, type: 'food', name: EDIT_ORIGINAL_NAME, price: '6.50', section: 'Mains', position: 1 }) },
   keys.admin.priv,
 );
 await publish(soup, 'menu definition qa-menu-soup (Mains, admin)');
 
 const espresso = signEvent(
-  { kind: 30009, tags: productTags({ d: TOGGLE_D, type: 'drink', name: 'QA Espresso', price: '3.00', section: 'Drinks', position: 1 }) },
+  { kind: KIND_LISTING, tags: productTags({ d: TOGGLE_D, type: 'drink', name: 'QA Espresso', price: '3.00', section: 'Drinks', position: 1 }) },
   keys.admin.priv,
 );
 await publish(espresso, 'menu definition qa-menu-espresso (Drinks, admin)');
 
 const foreign = signEvent(
-  { kind: 30009, tags: productTags({ d: FOREIGN_D, type: 'drink', name: 'QA Foreign lemonade', price: '4.20', section: 'Drinks', position: 2 }) },
-  issuerSecret,
+  { kind: KIND_LISTING, tags: productTags({ d: FOREIGN_D, type: 'drink', name: 'QA Foreign lemonade', price: '4.20', section: 'Drinks', position: 2 }) },
+  foreignAdmin.priv,
 );
-await publish(foreign, 'menu definition qa-menu-foreign (Drinks, badge-issuer key)');
+await publish(foreign, 'menu listing qa-menu-foreign (Drinks, second anchor admin)');
 
-const stored = await pool.querySync([relay.relay_url], { kinds: [8, 30009, 30078], limit: 50 });
-assert(stored.length >= 6, `independent relay query sees the venue fixture family (${stored.length} events)`);
+const stored = await pool.querySync([relay.relay_url], { kinds: [8, 30009, 30402, 31727, 30078], limit: 50 });
+assert(stored.length >= 8, `independent relay query sees the NIP-97 venue fixture family (${stored.length} events)`);
 pool.close([relay.relay_url]);
 
 writeState({
@@ -205,6 +196,9 @@ writeState({
   emulator_base_url: emulatorUrl(relay.base_url),
   admin_pubkey: keys.admin.pub,
   issuer_pubkey: issuerPubkey,
+  community_root_pubkey: community.rootPubkey,
+  community_anchor_id: community.anchor.id,
+  required_badge_address: community.requiredBadgeAddress,
   user_pubkey: holder.pub,
   venue_profile_id: venueProfile.id,
   product_definition_id: product.id,
@@ -214,14 +208,14 @@ writeState({
   invite_token: invite.token,
   invite_expires_at: invite.expires_at,
   menu_toggle_d: TOGGLE_D,
-  menu_toggle_address: `30009:${keys.admin.pub}:${TOGGLE_D}`,
+  menu_toggle_address: `${KIND_LISTING}:${keys.admin.pub}:${TOGGLE_D}`,
   menu_edit_d: EDIT_D,
-  menu_edit_address: `30009:${keys.admin.pub}:${EDIT_D}`,
+  menu_edit_address: `${KIND_LISTING}:${keys.admin.pub}:${EDIT_D}`,
   menu_edit_original_name: EDIT_ORIGINAL_NAME,
   menu_edit_expected_name: EDIT_EXPECTED_NAME,
   menu_foreign_d: FOREIGN_D,
-  menu_foreign_address: `30009:${issuerPubkey}:${FOREIGN_D}`,
-  menu_foreign_pubkey: issuerPubkey,
+  menu_foreign_address: `${KIND_LISTING}:${foreignAdmin.pub}:${FOREIGN_D}`,
+  menu_foreign_pubkey: foreignAdmin.pub,
   menu_item_ids: { [EDIT_D]: soup.id, [TOGGLE_D]: espresso.id, [FOREIGN_D]: foreign.id },
   phase: 'ready',
 });

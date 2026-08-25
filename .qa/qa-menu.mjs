@@ -2,9 +2,9 @@
 import { runRelayScreenScenario } from './relay-screen-scenario.mjs';
 
 try {
-  runRelayScreenScenario({
+  await runRelayScreenScenario({
     bootstrap: '.qa/relay-bootstrap-menu.mjs',
-    flow: 'maestro/flows/20-menu.yaml',
+    flow: 'e2e/flows/20-menu.{profile}.ad',
     scenario: 'menu',
     verifiers: ['.qa/verify-menu.mjs'],
   });

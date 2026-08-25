@@ -4,16 +4,37 @@ import { isEoce, isParsedEvent } from "@candypoets/nipworker/utils";
 import { useEffect, useMemo, useState } from "react";
 import { AppState } from "react-native";
 
+import {
+  deriveOrderRef,
+  entitlementTypeFor,
+  isNewerAnchor,
+  isSellableDefinition,
+  LISTING_KIND,
+  maxUsesForDefinition,
+  parseCommunityAnchor,
+  parsePermissionTags,
+  parsePriceTag,
+  parseStatusContext,
+  type CommunityAnchor,
+} from "@/access/nip97";
+import {
+  fetchRelayRootPubkey,
+  trustFromAnchor,
+  trustWithFulfillmentRoles,
+  type CapabilityRevocation,
+  type FulfillmentRoleDefinition,
+} from "@/access/trust";
 import { getNostrRuntime } from "@/nostr/manager";
 import {
+  KIND_ANCHOR,
   KIND_AWARD,
-  KIND_DEFINITION,
+  KIND_BADGE_DEFINITION,
+  KIND_LISTING,
+  KIND_REVOCATION,
   KIND_STATUS,
-  type OrderContext,
   type PublishedOrderStatus,
 } from "@/nostr/protocol";
 import { useVenue } from "@/venue/VenueContext";
-import { fetchVenueTrust } from "@/venue/trust";
 
 import {
   projectOrders,
@@ -30,47 +51,54 @@ export type OrdersResult = {
 };
 
 type Buffer = {
+  /** Latest root-signed community anchor (trust root for the fold). */
+  anchor?: CommunityAnchor;
   awards: Map<string, AwardInput>;
   definitions: Map<string, DefinitionInput>;
+  roleDefinitions: Map<string, FulfillmentRoleDefinition>;
+  revocations: Map<string, CapabilityRevocation>;
   statuses: Map<string, StatusInput>;
 };
 
 const emptyBuffer = (): Buffer => ({
   awards: new Map(),
   definitions: new Map(),
+  roleDefinitions: new Map(),
+  revocations: new Map(),
   statuses: new Map(),
 });
 
 /**
  * Subscription coordinator for the active venue relay. Owns exactly one
- * stable subscription (`board_orders_<sanitized relay>`, kinds 8/30009/37237),
- * extracts plain inputs at the worker boundary, and folds them through the
- * pure projection in fold.ts. EOSE is the loaded signal; a healthy relay with
- * no matching events still reaches ready. Cleanup unsubscribes on unmount,
- * venue change, and backgrounding.
+ * stable subscription (`board_orders_<sanitized relay>`, kinds
+ * 5/8/30009/30402/37237/31727), extracts plain inputs at the worker boundary,
+ * resolves delegated 37237/write role holders, and
+ * folds them through the pure projection in fold.ts. EOSE is the loaded
+ * signal; a healthy relay with no matching events still reaches ready.
+ * Cleanup unsubscribes on unmount, venue change, and backgrounding.
  */
 export function useOrders(): OrdersResult {
   const { venue, restoring } = useVenue();
   const relayUrl = venue?.relayUrl;
-  const serviceUrl = venue?.serviceUrl;
 
-  const [trustedIssuers, setTrustedIssuers] = useState<ReadonlySet<string> | null>(null);
+  const [rootPubkey, setRootPubkey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [buffer, setBuffer] = useState<Buffer>(emptyBuffer);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
-  // Issuer trust (venue-commerce-nip §4): venue authorities from the relay's
-  // NIP-11 document plus the badge issuer advertised by /community/info.
+  // Community root key (NIP-97 trust model): the relay's NIP-11 `pubkey` is
+  // the only out-of-band trust fact; the root-signed anchor event carries the
+  // admin set and the delegated badge issuer.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTrustedIssuers(null);
+    setRootPubkey(null);
     setError(null);
-    if (!relayUrl || !serviceUrl) return;
+    if (!relayUrl) return;
     let cancelled = false;
-    fetchVenueTrust(relayUrl, serviceUrl)
-      .then((trust) => {
-        if (!cancelled) setTrustedIssuers(trust.trustedIssuers);
+    fetchRelayRootPubkey(relayUrl)
+      .then((pubkey) => {
+        if (!cancelled) setRootPubkey(pubkey.toLowerCase());
       })
       .catch((cause: unknown) => {
         if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
@@ -78,7 +106,7 @@ export function useOrders(): OrdersResult {
     return () => {
       cancelled = true;
     };
-  }, [relayUrl, serviceUrl]);
+  }, [relayUrl]);
 
   // The single board subscription. A deep link foregrounds Android
   // immediately before this effect runs and nipworker replaces live sockets
@@ -88,7 +116,7 @@ export function useOrders(): OrdersResult {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBuffer(emptyBuffer());
     setLoaded(false);
-    if (!relayUrl) return;
+    if (!relayUrl || !rootPubkey) return;
     if (!getNostrRuntime().manager) {
       setError("The secure Nostr engine is unavailable. Use a Crays development build.");
       return;
@@ -111,12 +139,24 @@ export function useOrders(): OrdersResult {
 
     const handleMessage = (message: WorkerMessage) => {
       if (isEoce(message)) {
+        if (__DEV__) console.log(`[crays-board-orders-eose]${JSON.stringify({ relay: relayUrl })}`);
         setLoaded(true);
         return;
       }
       const event = isParsedEvent(message);
       if (!event) return;
       const kind = event.kind();
+
+      if (kind === KIND_ANCHOR) {
+        const anchor = parseCommunityAnchor(event);
+        // Only the relay-identified root key anchors this venue's trust.
+        if (!anchor || anchor.pubkey !== rootPubkey) return;
+        setBuffer((current) => {
+          if (current.anchor && !isNewerAnchor(anchor, current.anchor)) return current;
+          return { ...current, anchor };
+        });
+        return;
+      }
 
       if (kind === KIND_AWARD) {
         const id = event.id() ?? "";
@@ -132,32 +172,37 @@ export function useOrders(): OrdersResult {
           holderPubkey,
           createdAt: event.createdAt(),
           ...(Number.isSafeInteger(expiration) && expiration > 0 ? { expiresAt: expiration } : {}),
+          orderRef: deriveOrderRef({
+            awardId: id,
+            order: extractTagValue(event, "order"),
+            i: extractTagValue(event, "i"),
+          }),
         };
         setBuffer((current) => ({ ...current, awards: new Map(current.awards).set(id, award) }));
         return;
       }
 
-      if (kind === KIND_DEFINITION) {
+      if (kind === KIND_LISTING) {
         const d = extractTagValue(event, "d");
         const author = (event.pubkey() ?? "").toLowerCase();
         const id = event.id() ?? "";
         if (!d || !author || !id) return;
-        const address = `${KIND_DEFINITION}:${author}:${d}`;
+        const address = `${KIND_LISTING}:${author}:${d}`;
         const createdAt = event.createdAt();
-        const maxUses = Number(extractTagValue(event, "max_uses"));
-        const name = extractTagValue(event, "name");
-        const type = extractTagValue(event, "type");
+        const name = extractTagValue(event, "title");
+        const maxUses = maxUsesForDefinition(LISTING_KIND, event);
         const definition: DefinitionInput = {
           address,
           id,
           createdAt,
           ...(name ? { name } : {}),
-          ...(type ? { type } : {}),
-          sellable: extractTagValues(event, "t").includes("sellable"),
-          ...(Number.isSafeInteger(maxUses) && maxUses > 0 ? { maxUses } : {}),
+          sellable: Boolean(parsePriceTag(event)),
+          ...(maxUses !== undefined ? { maxUses } : {}),
+          eventLinked: entitlementTypeFor(LISTING_KIND, event) === "event_access",
         };
         setBuffer((current) => {
-          // Addressable events resolve as the latest per address (§3.1).
+          // Addressable events resolve as the latest per address (created_at,
+          // then higher id).
           const previous = current.definitions.get(address);
           if (
             previous &&
@@ -170,26 +215,92 @@ export function useOrders(): OrdersResult {
         return;
       }
 
+      if (kind === KIND_BADGE_DEFINITION) {
+        if (entitlementTypeFor(KIND_BADGE_DEFINITION, event) !== "role") return;
+        const d = extractTagValue(event, "d");
+        const authorPubkey = (event.pubkey() ?? "").toLowerCase();
+        const id = event.id() ?? "";
+        if (!d || !authorPubkey || !id) return;
+        const address = `${KIND_BADGE_DEFINITION}:${authorPubkey}:${d}`;
+        const definition: FulfillmentRoleDefinition = {
+          address,
+          id,
+          authorPubkey,
+          permissions: parsePermissionTags(event),
+          sellable: isSellableDefinition(event),
+          createdAt: event.createdAt(),
+        };
+        setBuffer((current) => {
+          const previous = current.roleDefinitions.get(address);
+          if (
+            previous &&
+            (previous.createdAt > definition.createdAt ||
+              (previous.createdAt === definition.createdAt && previous.id > definition.id))
+          ) {
+            return current;
+          }
+          return {
+            ...current,
+            roleDefinitions: new Map(current.roleDefinitions).set(address, definition),
+          };
+        });
+        return;
+      }
+
       if (kind === KIND_STATUS) {
         const id = event.id() ?? "";
         const authorPubkey = (event.pubkey() ?? "").toLowerCase();
-        // §6.7 (resolved): `e` is the stable order context; `d` is
-        // stage-scoped (`<awardId>:<status>`) so the addressable-range relay
-        // retains every transition. Legacy d=e events resolve identically.
-        const contextKey = extractTagValue(event, "e") || extractTagValue(event, "d") || "";
+        // Statuses without a valid NIP-97 context (exactly one of order/event,
+        // with `d` matching) are ignored outright.
+        const context = parseStatusContext({
+          order: extractTagValue(event, "order"),
+          event: extractTagValue(event, "event"),
+          d: extractTagValue(event, "d"),
+        });
         const status = extractTagValue(event, "status");
-        const context = extractTagValue(event, "context");
-        if (!id || !authorPubkey || !contextKey || !status) return;
-        if (context !== "order" && context !== "event") return;
+        const awardId = extractTagValue(event, "e") ?? "";
+        const definitionAddress = extractTagValue(event, "a") ?? "";
+        const holderPubkey = (extractTagValue(event, "p") ?? "").toLowerCase();
+        if (
+          !id ||
+          !authorPubkey ||
+          !context ||
+          !status ||
+          !awardId ||
+          !definitionAddress ||
+          !holderPubkey
+        ) {
+          return;
+        }
         const entry: StatusInput = {
           id,
           authorPubkey,
-          contextKey,
+          contextKey: context.key,
+          contextType: context.type,
           status: status as PublishedOrderStatus,
-          context: context as OrderContext,
+          awardId,
+          definitionAddress,
+          holderPubkey,
           createdAt: event.createdAt(),
         };
+        if (__DEV__) {
+          console.log(
+            `[crays-board-order-received-status]${JSON.stringify({ id, e: awardId, status })}`,
+          );
+        }
         setBuffer((current) => ({ ...current, statuses: new Map(current.statuses).set(id, entry) }));
+        return;
+      }
+
+      if (kind === KIND_REVOCATION) {
+        const id = event.id() ?? "";
+        const authorPubkey = (event.pubkey() ?? "").toLowerCase();
+        const references = extractTagValues(event, "e");
+        if (!id || !authorPubkey || references.length === 0) return;
+        setBuffer((current) => ({
+          ...current,
+          revocations: new Map(current.revocations).set(id, { authorPubkey, references }),
+        }));
       }
     };
 
@@ -200,7 +311,21 @@ export function useOrders(): OrdersResult {
         const subId = `board_orders_${relayUrl.replace(/[^a-z0-9]/gi, "_")}`;
         unsubscribe = subscribeToNostr(
           subId,
-          [{ kinds: [KIND_AWARD, KIND_DEFINITION, KIND_STATUS], relays: [relayUrl], limit: 500, noCache: true }],
+          [
+            {
+              kinds: [
+                KIND_AWARD,
+                KIND_BADGE_DEFINITION,
+                KIND_LISTING,
+                KIND_STATUS,
+                KIND_REVOCATION,
+                KIND_ANCHOR,
+              ],
+              relays: [relayUrl],
+              limit: 500,
+              noCache: true,
+            },
+          ],
           handleMessage,
           { closeOnEose: false },
         );
@@ -221,7 +346,7 @@ export function useOrders(): OrdersResult {
       appStateSubscription.remove();
       stop();
     };
-  }, [relayUrl]);
+  }, [relayUrl, rootPubkey]);
 
   // Elapsed-time ticker for visible cards.
   useEffect(() => {
@@ -230,16 +355,27 @@ export function useOrders(): OrdersResult {
     return () => clearInterval(timer);
   }, [relayUrl]);
 
+  const trust = useMemo(() => {
+    if (!buffer.anchor) return null;
+    return trustWithFulfillmentRoles(trustFromAnchor(buffer.anchor), {
+      definitions: [...buffer.roleDefinitions.values()],
+      awards: [...buffer.awards.values()],
+      revocations: [...buffer.revocations.values()],
+      now,
+    });
+  }, [buffer.anchor, buffer.roleDefinitions, buffer.awards, buffer.revocations, now]);
+
   const orders = useMemo(() => {
-    if (!trustedIssuers) return [];
+    if (!trust) return [];
     return projectOrders({
       awards: [...buffer.awards.values()],
       definitions: [...buffer.definitions.values()],
       statuses: [...buffer.statuses.values()],
-      trustedIssuers,
+      revocations: [...buffer.revocations.values()],
+      trust,
       now,
     });
-  }, [trustedIssuers, buffer, now]);
+  }, [trust, buffer, now]);
 
   // Fixed QA contract: one projection marker per visible order.
   useEffect(() => {
@@ -254,6 +390,6 @@ export function useOrders(): OrdersResult {
   if (restoring) return { status: "loading", orders: [] };
   if (error) return { status: "error", orders: [], error };
   if (!venue) return { status: "ready", orders: [] };
-  if (!loaded || !trustedIssuers) return { status: "loading", orders: [] };
+  if (!loaded || !trust) return { status: "loading", orders: [] };
   return { status: "ready", orders };
 }

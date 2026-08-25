@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Independent settings verification (venue-commerce-nip §11 style), per
+ * Independent settings verification (NIP-97), per
  * docs/screens/settings.md:
  *  - the venue profile was republished at the exact d=nuts-community-profile
  *    with the QA-updated description, signed by the admin, on the venue relay;
  *  - the membership availability flip landed at the same stable d;
  *  - payments and room stayed read-only: the room manifest is untouched and
- *    the relay holds no extra 30009/30078/37237 events beyond the fixtures.
- * The QA description literal must match maestro/flows/60-settings.yaml.
+ *    the relay holds no extra 30009/30402/30078/37237 events beyond the fixtures.
+ * The QA description literal must match e2e/flows/60-settings.*.ad.
  */
 import { execFileSync } from 'node:child_process';
 import { verifyEvent } from 'nostr-tools';
@@ -47,8 +47,12 @@ const membership = memberships[0];
 assert(membership.pubkey === state.admin_pubkey, 'membership update is signed by the admin');
 assert(tag(membership, 'd') === state.membership_d, 'membership update kept the same stable d');
 assert(tag(membership, 'availability') === 'unavailable', 'membership availability flipped to unavailable');
-assert(tag(membership, 'type') === 'membership' && tag(membership, 'period') === 'monthly', 'membership classification retained');
-assert(tag(membership, 'price') === '12.00' && tag(membership, 'currency') === 'EUR', 'membership price/currency retained');
+assert(tag(membership, 'type') === undefined && tag(membership, 't') === 'membership', 'membership keeps NIP-97 t=membership classification');
+const membershipPrice = membership.tags.find((entry) => entry[0] === 'price');
+assert(
+  JSON.stringify(membershipPrice) === JSON.stringify(['price', '12.00', 'EUR', 'month']),
+  'membership keeps the recurring NIP-99 price tag',
+);
 assert(membership.id !== state.membership_definition_id, 'membership update is a new event at the same d');
 assert(verifyEvent(membership), 'membership update has a valid Nostr signature');
 
@@ -63,17 +67,26 @@ assert(statuses.length === 0, 'no order statuses were written from the settings 
 const all30078 = await pool.querySync([state.relay_url], { kinds: [30078], limit: 50 });
 assert(all30078.length === 2, `only the profile and room manifest 30078 events exist (${all30078.length} found)`);
 const all30009 = await pool.querySync([state.relay_url], { kinds: [30009], limit: 50 });
-// The relay's own badge definition (d=members, issuer-signed) is expected
-// provisioning infrastructure; the staff key may hold only the seeded
-// product and the flipped membership — nothing else was written.
+// The relay's root-authored membership definition is expected provisioning
+// infrastructure; the staff key may hold only the flipped membership.
 const itemD = state.product_address.split(':').slice(2).join(':');
 const adminDefinitionDs = all30009
   .filter((event) => event.pubkey === state.admin_pubkey)
   .map((event) => tag(event, 'd'))
   .sort();
 assert(
-  JSON.stringify(adminDefinitionDs) === JSON.stringify([itemD, state.membership_d].sort()),
-  `staff definitions are exactly the seeded product and membership (${adminDefinitionDs.join(', ')})`,
+  JSON.stringify(adminDefinitionDs) === JSON.stringify([state.membership_d]),
+  `staff badge definitions contain only the membership (${adminDefinitionDs.join(', ')})`,
+);
+const rootDefinitions = all30009.filter((event) => event.pubkey === state.community_root_pubkey);
+assert(
+  rootDefinitions.length === 1 && `30009:${rootDefinitions[0].pubkey}:${tag(rootDefinitions[0], 'd')}` === state.required_badge_address,
+  'root-authored required membership is the only provisioning badge definition',
+);
+const listings = await pool.querySync([state.relay_url], { kinds: [30402], limit: 50 });
+assert(
+  listings.length === 1 && listings[0].pubkey === state.admin_pubkey && tag(listings[0], 'd') === itemD,
+  'the untouched product is the only 30402 listing',
 );
 pool.close([state.relay_url]);
 

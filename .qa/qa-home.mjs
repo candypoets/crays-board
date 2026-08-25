@@ -2,9 +2,9 @@
 import { runRelayScreenScenario } from './relay-screen-scenario.mjs';
 
 try {
-  runRelayScreenScenario({
+  await runRelayScreenScenario({
     bootstrap: '.qa/relay-bootstrap-home.mjs',
-    flow: 'maestro/flows/80-home.yaml',
+    flow: 'e2e/flows/80-home.{profile}.ad',
     scenario: 'home',
     verifiers: ['.qa/verify-home.mjs'],
   });

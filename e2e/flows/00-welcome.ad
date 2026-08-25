@@ -1,0 +1,11 @@
+# ENTRY-01 — cold launch with no identity.
+context platform=android timeout=180000
+env APP_ID=life.crays.board
+env DEV_CLIENT_URL="exp+crays-board://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8090"
+
+open "${APP_ID}" --metro-port 8090 --launch-url "${DEV_CLIENT_URL}"
+wait "id=\"welcome-screen\"" 120000
+is visible "id=\"create-venue-button\""
+is visible "id=\"sign-in-button\""
+screenshot "${AD_ARTIFACTS}/00-welcome.png"
+close

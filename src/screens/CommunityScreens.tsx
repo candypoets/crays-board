@@ -23,7 +23,7 @@ export function PeopleScreen({ width, members }: { width: number; members: Membe
       {view === "people" ? (
         <Panel padded={false}>
           {members.map((member) => (
-            <Pressable key={member.id} accessibilityRole="button" style={({ pressed }) => [styles.personRow, pressed && styles.pressed]}>
+            <Pressable key={member.id} accessibilityRole="button" style={styles.personRow}>
               <View style={styles.personAvatar}><Text style={styles.personInitials}>{member.initials}</Text></View>
               <View style={styles.personCopy}><Text style={styles.personName}>{member.name}</Text><Text style={styles.personRole}>{member.role}</Text></View>
               <Badge label={member.status === "on-shift" ? "On shift" : member.status === "invited" ? "Invited" : "Offline"} tone={member.status === "on-shift" ? "success" : "neutral"} />
@@ -153,7 +153,7 @@ export function MoreScreen({ onNavigate }: { onNavigate: (area: Area) => void })
       <ScreenTitle title="More" description="Team, access, and venue administration." />
       <Panel padded={false}>
         {destinations.map((destination) => (
-          <Pressable key={destination.area} accessibilityRole="button" onPress={() => onNavigate(destination.area)} style={({ pressed }) => [styles.moreRow, pressed && styles.pressed]}>
+          <Pressable key={destination.area} accessibilityRole="button" onPress={() => onNavigate(destination.area)} style={styles.moreRow}>
             <View style={styles.moreIcon}><MaterialCommunityIcons name={destination.icon} size={23} color={colors.pinkDark} /></View>
             <View style={styles.moreCopy}><Text style={styles.moreTitle}>{destination.title}</Text><Text style={styles.moreDescription}>{destination.description}</Text></View>
             <MaterialCommunityIcons name="chevron-right" size={23} color={colors.inkFaint} />

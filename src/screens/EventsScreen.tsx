@@ -49,7 +49,7 @@ export function EventsScreen({ width, events, onEventsChange }: { width: number;
       <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Upcoming</Text><Text style={styles.sectionCount}>{events.length} events</Text></View>
       <Panel padded={false}>
         {events.length ? events.map((event) => (
-          <Pressable key={event.id} accessibilityRole="button" style={({ pressed }) => [styles.eventRow, phone && styles.eventRowPhone, pressed && styles.pressed]}>
+          <Pressable key={event.id} accessibilityRole="button" style={[styles.eventRow, phone && styles.eventRowPhone]}>
             <View style={styles.eventDateBlock}><Text style={styles.eventDate}>{event.date}</Text><Text style={styles.eventTime}>{event.time}</Text></View>
             <View style={styles.eventCopy}>
               <Text style={styles.eventTitle}>{event.title}</Text>

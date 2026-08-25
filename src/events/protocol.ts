@@ -1,13 +1,21 @@
 import type { EventTemplate } from "nostr-tools";
 
 /**
- * NIP-52 calendar contract for the events slice (PRD §8.6,
- * docs/architecture/venue-commerce-nip.md §2).
+ * NIP-52 calendar contract for the events slice (PRD §8.6) under NIP-97
+ * (spec of record: ~/nips/97.md). The grammar is plain NIP-52 — unchanged
+ * by the NIP-97 migration:
  *
  * - Calendar event (31923): addressable timed event, staff-owned. The
  *   open/free writer publishes exactly the tags in buildCalendarEvent.
+ *   NIP-97 only changes who counts as staff: authors must be trusted
+ *   definition authors (anchor admins + the community root key).
  * - RSVP (31925): one attendee's response; only the latest response per
- *   attendee/event counts (fold.ts owns that projection).
+ *   attendee/event counts (fold.ts owns that projection). RSVPs are
+ *   attendee-published and are not gated by anchor trust.
+ *
+ * Paid slices and tickets are NOT tags on the 31923: under NIP-97 they are
+ * separate 30402 listing definitions linked to the event coordinate. The
+ * creation wizard does not sell tickets yet — that is future work.
  */
 export const KIND_CALENDAR_EVENT = 31923;
 export const KIND_RSVP = 31925;
@@ -36,9 +44,10 @@ function isPositiveSafeInteger(value: number): boolean {
 
 /**
  * Builds the exact kind 31923 tag set for an open/free event in this slice:
- * `d`, `title`, `start`, `end`, `summary` — no more, no less (the restricted/
- * paid slices add required_badge/price tags later). Content stays empty;
- * everything guests render comes from tags.
+ * `d`, `title`, `start`, `end`, `summary` — no more, no less. Under NIP-97
+ * a paid event is a separate 30402 listing definition whose `a` tag links
+ * this event's coordinate; the wizard does not write those yet (future
+ * work). Content stays empty; everything guests render comes from tags.
  */
 export function buildCalendarEvent({ identifier, title, summary, start, end }: CalendarEventParams): EventTemplate {
   const trimmedTitle = title.trim();

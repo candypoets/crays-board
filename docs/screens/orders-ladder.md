@@ -1,6 +1,6 @@
-# Orders ladder — full §6.2 status ladder (advance, decline, cancel)
+# Orders ladder — full §5.1 status ladder (advance, decline, cancel)
 
-Covers QA_WORKFLOWS ORDER-03 (complete ladder), ORDER-04 (invalid transitions impossible), ORDER-05 (pending-ack and repeat tap), ORDER-07 (cancellation with confirmation), and ORDER-12 (decline). Extends the vertical slice in `docs/screens/orders.md`; same venue-commerce-nip §5/§6 event contract.
+Covers QA_WORKFLOWS ORDER-03 (complete ladder), ORDER-04 (invalid transitions impossible), ORDER-05 (pending-ack and repeat tap), ORDER-07 (cancellation with confirmation), and ORDER-12 (decline). Extends the vertical slice in `docs/screens/orders.md`; same `venue-commerce-nip.md` §5 fulfillment contract.
 
 ## Purpose
 
@@ -12,7 +12,13 @@ Staff identity (QA admin key) with venue authority and the `store` permission on
 
 ## Starting truth
 
-- Isolated relay `craysboardqa-venue-<run>` with: venue profile `30078` (`d=nuts-community-profile`, admin-signed), one sellable product definition `30009` (`type=food`, `t=sellable`, `max_uses=1`, admin-signed), and **three** kind `8` awards for that product signed by the relay's badge issuer — advance, decline, cancel — each an implicit-pending order, with `created_at` spaced one second apart so the oldest-first queue order is deterministic.
+- Isolated relay `craysboardqa-venue-<run>` with its NIP-11 root key and
+  root-signed `31727` community anchor, venue profile `30078`, one sellable
+  kind `30402` product listing (anchor-admin-signed, no event link, one-use
+  default), and **three** kind `8` awards for that listing signed by the
+  delegated badge issuer — advance, decline, cancel — each an
+  implicit-pending order, with `created_at` spaced one second apart so the
+  oldest-first queue order is deterministic.
 - App installed, state cleared, Metro on 8090, one Android device.
 
 ## User action
@@ -28,11 +34,18 @@ Open the seed deep link and wait for the Orders screen. On the first (advance) c
 
 ## Authoritative result
 
-- Advance award: exactly four kind `37237` statuses — accepted, processing, ready, fulfilled in order — each with `e` = award id (the stable order context), `d` = `<awardId>:<status>` (stage-scoped per the §6.7 resolution: kind 37237 is addressable-range, so a constant `d` would let the relay retain only the latest transition), exact `a`/`p` tags, `context=order`, signed by the staff key, valid signatures, strictly increasing `created_at` (the client floors each status at one second above the previous).
-- Decline award: exactly one `37237` with `status=cancelled` — the double-tap idempotency proof.
-- Cancel award: exactly two `37237` statuses — accepted then cancelled, monotonic; the dismissed dialog published nothing.
-- The relay contains exactly seven `37237` events in total; no status references any other order context.
-- Logcat `[crays-board-order]` projects all three award ids with the exact definition address; `[crays-board-order-status]` contains the same seven status event ids that landed on the relay.
+- The relay retains exactly one current kind `37237` per order context:
+  `fulfilled` for advance and `cancelled` for both decline and cancel. Each has
+  exact `a`/`e`/`p` tags, `order=<awardId>`, `d=order:<awardId>`, the staff
+  signer, a valid signature, and a timestamp no older than its award.
+- The relay therefore contains exactly three retained `37237` events, with no
+  status referencing another order. This is the NIP-97 addressable current
+  state, not an append-only transition log.
+- Logcat `[crays-board-order]` projects all three award ids with the exact
+  listing address. Seven unique `[crays-board-order-status]` markers prove the
+  deliberate publish sequence: accepted → processing → ready → fulfilled,
+  one cancelled decline, and accepted → cancelled after the confirmation.
+  Each sequence's final marker id matches the status retained by the relay.
 
 ## Forbidden result
 
@@ -41,7 +54,10 @@ Open the seed deep link and wait for the Orders screen. On the first (advance) c
 
 ## Lifecycle boundary
 
-The screen remounts its single stable subscription (`board_orders_<relay>`, kinds 8/30009/37237, no cache) on foreground; the confirmed-stage override only ever bridges the gap between relay acknowledgement and subscription echo, so projection always converges to relay truth.
+The screen remounts its single stable subscription (`board_orders_<relay>`,
+kinds `5`/`8`/`30009`/`30402`/`31727`/`37237`, no cache) on foreground; the
+confirmed-stage override only bridges the gap between relay acknowledgement
+and subscription echo, so projection converges to relay truth.
 
 ## Cleanup
 

@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <style>
+      .ui { font-family: Arial, Helvetica, sans-serif; fill: #2B1420; }
+      .muted { fill: #735966; }
+      .faint { fill: #A58D98; }
+      .white { fill: #FFFFFF; }
+      .nightMuted { fill: #CDAFBB; }
+      .bold { font-weight: 700; }
+      .heavy { font-weight: 800; }
+      .label { font-size: 14px; font-weight: 700; }
+      .body { font-size: 16px; }
+      .small { font-size: 13px; }
+      .tiny { font-size: 11px; }
+      .stroke { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#FFF7F8"/>
+  <rect width="1600" height="32" fill="#160A11"/>
+  <text x="20" y="22" class="ui white small bold">15:58</text>
+  <circle cx="1518" cy="16" r="4" fill="#FFFFFF"/>
+  <path d="M1533 20c8-9 18-9 26 0M1538 20c5-5 11-5 16 0" class="stroke" stroke="#FFFFFF"/>
+  <rect x="1570" y="9" width="16" height="14" rx="3" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+  <rect x="1586" y="13" width="3" height="6" rx="1" fill="#FFFFFF"/>
+
+  <!-- Focused door-mode app bar -->
+  <rect x="0" y="32" width="1600" height="92" fill="#160A11"/>
+  <circle cx="40" cy="78" r="22" fill="#241019"/>
+  <path d="M46 66L34 78l12 12" class="stroke" stroke="#FFFFFF" stroke-width="3"/>
+  <path d="M88 72c13 0 19-6 19-19 0 13 6 19 19 19-13 0-19 6-19 19 0-13-6-19-19-19Z" fill="#F50A48"/>
+  <text x="138" y="72" class="ui white heavy" font-size="23">Event check-in</text>
+  <text x="138" y="97" class="ui nightMuted small">Friday Supper Club · Doors open now</text>
+
+  <rect x="1050" y="50" width="260" height="56" rx="16" fill="#241019" stroke="#3B1B28"/>
+  <text x="1070" y="74" class="ui nightMuted tiny bold">ATTENDANCE</text>
+  <text x="1070" y="96" class="ui white body bold">1 of 2 checked in</text>
+  <rect x="1232" y="77" width="58" height="7" rx="4" fill="#3B1B28"/>
+  <rect x="1232" y="77" width="29" height="7" rx="4" fill="#FF7668"/>
+
+  <rect x="1326" y="50" width="154" height="56" rx="16" fill="#241019" stroke="#3B1B28"/>
+  <circle cx="1350" cy="78" r="5" fill="#167A58"/>
+  <text x="1364" y="83" class="ui white label">Door mode</text>
+  <circle cx="1525" cy="78" r="22" fill="#FFE3EA"/>
+  <text x="1525" y="83" class="ui heavy" fill="#C9063A" font-size="11" text-anchor="middle">MI</text>
+
+  <!-- Scanner viewport -->
+  <rect x="24" y="148" width="1000" height="824" rx="20" fill="#160A11"/>
+  <rect x="48" y="172" width="152" height="34" rx="17" fill="#241019"/>
+  <circle cx="67" cy="189" r="5" fill="#167A58"/>
+  <text x="82" y="194" class="ui white tiny bold">CAMERA READY</text>
+  <rect x="888" y="172" width="52" height="52" rx="16" fill="#241019"/>
+  <path d="M914 184v28M900 198h28" class="stroke" stroke="#FFFFFF"/>
+  <rect x="948" y="172" width="52" height="52" rx="16" fill="#241019"/>
+  <path d="M962 190h24v18h-24zM968 186h12l3 4" class="stroke" stroke="#FFFFFF"/>
+
+  <!-- scanner frame -->
+  <path d="M286 380v-48q0-24 24-24h48M690 308h48q24 0 24 24v48M762 650v48q0 24-24 24h-48M358 722h-48q-24 0-24-24v-48" fill="none" stroke="#F50A48" stroke-width="7" stroke-linecap="round"/>
+  <rect x="326" y="348" width="396" height="334" rx="28" fill="#241019" opacity="0.45"/>
+  <path d="M458 502h132v102H458zM478 474h92l16 28M490 554h68" class="stroke" stroke="#FF7668" stroke-width="6" opacity="0.75"/>
+  <text x="524" y="786" class="ui white heavy" font-size="26" text-anchor="middle">Scan guest pass</text>
+  <text x="524" y="816" class="ui nightMuted body" text-anchor="middle">Hold the QR code inside the frame.</text>
+  <rect x="324" y="850" width="400" height="52" rx="15" fill="#241019"/>
+  <text x="524" y="882" class="ui nightMuted label" text-anchor="middle">Ready for the next guest</text>
+  <text x="48" y="944" class="ui nightMuted tiny">Camera is used only while this screen is open.</text>
+  <circle cx="966" cy="934" r="22" fill="#241019"/>
+  <path d="M958 926l16 16M974 926l-16 16" class="stroke" stroke="#FFFFFF"/>
+
+  <!-- Side control panel -->
+  <rect x="1048" y="148" width="528" height="824" rx="20" fill="#FFFFFF" stroke="#EEDCE2"/>
+  <text x="1080" y="190" class="ui muted tiny bold">FRIDAY SUPPER CLUB</text>
+  <text x="1080" y="226" class="ui heavy" font-size="25">One guest still expected</text>
+  <text x="1080" y="252" class="ui muted body">Keep the scanner ready at the door.</text>
+
+  <rect x="1080" y="282" width="464" height="126" rx="16" fill="#FFF7F8" stroke="#EEDCE2"/>
+  <text x="1104" y="314" class="ui muted tiny bold">PROGRESS</text>
+  <text x="1104" y="360" class="ui heavy" font-size="36">1</text>
+  <text x="1132" y="360" class="ui muted body">checked in</text>
+  <line x1="1284" y1="310" x2="1284" y2="382" stroke="#EEDCE2"/>
+  <text x="1312" y="350" class="ui heavy" font-size="25">50%</text>
+  <text x="1312" y="376" class="ui muted small">of expected guests</text>
+
+  <text x="1080" y="454" class="ui heavy" font-size="19">Recent entry</text>
+  <rect x="1080" y="474" width="464" height="98" rx="16" fill="#DDF4EA"/>
+  <circle cx="1112" cy="523" r="18" fill="#167A58"/>
+  <path d="M1103 523l7 7 13-15" class="stroke" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="1144" y="514" class="ui heavy" fill="#167A58" font-size="15">Guest 8f14… accepted</text>
+  <text x="1144" y="539" class="ui muted small">Ticket valid · 1 use</text>
+  <text x="1516" y="526" class="ui muted small" text-anchor="end">15:54</text>
+
+  <line x1="1080" y1="616" x2="1544" y2="616" stroke="#EEDCE2"/>
+  <text x="1080" y="658" class="ui heavy" font-size="19">Scanner fallback</text>
+  <text x="1080" y="684" class="ui muted small">If the camera cannot read a pass, enter its code.</text>
+  <rect x="1080" y="708" width="464" height="54" rx="15" fill="#FFFFFF" stroke="#D9BEC8"/>
+  <path d="M1104 724h22v22h-22zM1109 724v22M1117 724v22" class="stroke" stroke="#2B1420"/>
+  <text x="1142" y="741" class="ui label">Enter code manually</text>
+  <path d="M1514 730l7 7-7 7" class="stroke" stroke="#735966"/>
+
+  <rect x="1080" y="786" width="464" height="76" rx="16" fill="#FFF0CC"/>
+  <circle cx="1108" cy="824" r="14" fill="#9A5C00"/>
+  <text x="1108" y="830" class="ui white heavy" font-size="16" text-anchor="middle">i</text>
+  <text x="1136" y="818" class="ui bold" fill="#9A5C00" font-size="13">No camera?</text>
+  <text x="1136" y="840" class="ui muted small">Manual entry remains available throughout check-in.</text>
+
+  <rect x="1080" y="892" width="208" height="52" rx="15" fill="#FFF7F8" stroke="#D9BEC8"/>
+  <text x="1184" y="924" class="ui label" text-anchor="middle">Back to event</text>
+  <text x="1516" y="924" class="ui faint small" text-anchor="end">Maison Crays</text>
+  <!-- Accepted state overlays: same stable layout, high-salience feedback -->
+  <rect x="1050" y="50" width="260" height="56" rx="16" fill="#241019" stroke="#3B1B28"/>
+  <text x="1070" y="74" class="ui nightMuted tiny bold">ATTENDANCE</text>
+  <text x="1070" y="96" class="ui white body bold">2 of 2 checked in</text>
+  <rect x="1232" y="77" width="58" height="7" rx="4" fill="#3B1B28"/>
+  <rect x="1232" y="77" width="58" height="7" rx="4" fill="#39B77D"/>
+
+  <rect x="24" y="148" width="1000" height="824" rx="20" fill="#103B2E"/>
+  <circle cx="524" cy="420" r="104" fill="#DDF4EA"/>
+  <path d="M472 420l34 34 72-82" fill="none" stroke="#167A58" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="524" y="574" class="ui white heavy" font-size="44" text-anchor="middle">Entry accepted</text>
+  <text x="524" y="616" class="ui" style="fill:#BDE6D5" font-size="21" text-anchor="middle">Guest 5724… · Ticket valid · 1 use</text>
+  <rect x="364" y="666" width="320" height="54" rx="16" fill="#164B3B"/>
+  <text x="524" y="700" class="ui white label" text-anchor="middle">Ready for the next guest in 1.8s</text>
+  <rect x="364" y="740" width="320" height="8" rx="4" fill="#2B6C55"/>
+  <rect x="364" y="740" width="222" height="8" rx="4" fill="#FF7668"/>
+  <rect x="396" y="814" width="256" height="54" rx="15" fill="#FFFFFF" fill-opacity="0.1" stroke="#7BC7A7"/>
+  <text x="524" y="847" class="ui white label" text-anchor="middle">Undo last check-in</text>
+  <text x="524" y="924" class="ui" style="fill:#BDE6D5" font-size="13" text-anchor="middle">Confirmation stays visible long enough to prevent duplicate scans.</text>
+
+  <rect x="1048" y="148" width="528" height="824" rx="20" fill="#FFFFFF" stroke="#EEDCE2"/>
+  <text x="1080" y="190" class="ui muted tiny bold">FRIDAY SUPPER CLUB</text>
+  <text x="1080" y="226" class="ui heavy" font-size="25">All expected guests are in</text>
+  <text x="1080" y="252" class="ui muted body">The scanner remains open for late arrivals.</text>
+
+  <rect x="1080" y="282" width="464" height="126" rx="16" fill="#DDF4EA"/>
+  <text x="1104" y="314" class="ui" fill="#167A58" font-size="11" font-weight="700">PROGRESS</text>
+  <text x="1104" y="360" class="ui heavy" fill="#167A58" font-size="36">2</text>
+  <text x="1132" y="360" class="ui muted body">checked in</text>
+  <line x1="1284" y1="310" x2="1284" y2="382" stroke="#BDE6D5"/>
+  <text x="1312" y="350" class="ui heavy" fill="#167A58" font-size="25">100%</text>
+  <text x="1312" y="376" class="ui muted small">of expected guests</text>
+
+  <text x="1080" y="454" class="ui heavy" font-size="19">Recent entries</text>
+  <rect x="1080" y="474" width="464" height="98" rx="16" fill="#DDF4EA"/>
+  <circle cx="1112" cy="523" r="18" fill="#167A58"/>
+  <path d="M1103 523l7 7 13-15" class="stroke" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="1144" y="514" class="ui heavy" fill="#167A58" font-size="15">Guest 5724… accepted</text>
+  <text x="1144" y="539" class="ui muted small">Ticket valid · 1 use</text>
+  <text x="1516" y="526" class="ui muted small" text-anchor="end">15:58</text>
+
+  <rect x="1080" y="586" width="464" height="82" rx="16" fill="#FFF7F8"/>
+  <circle cx="1112" cy="627" r="16" fill="#DDF4EA"/>
+  <path d="M1105 627l6 6 12-14" class="stroke" stroke="#167A58" stroke-width="3"/>
+  <text x="1144" y="619" class="ui bold" font-size="14">Guest 8f14… accepted</text>
+  <text x="1144" y="643" class="ui muted small">Ticket valid · 1 use</text>
+  <text x="1516" y="632" class="ui muted small" text-anchor="end">15:54</text>
+
+  <line x1="1080" y1="708" x2="1544" y2="708" stroke="#EEDCE2"/>
+  <text x="1080" y="750" class="ui heavy" font-size="19">Scanner fallback</text>
+  <text x="1080" y="776" class="ui muted small">Manual entry stays available for damaged passes.</text>
+  <rect x="1080" y="800" width="464" height="54" rx="15" fill="#FFFFFF" stroke="#D9BEC8"/>
+  <path d="M1104 816h22v22h-22zM1109 816v22M1117 816v22" class="stroke" stroke="#2B1420"/>
+  <text x="1142" y="833" class="ui label">Enter code manually</text>
+  <path d="M1514 822l7 7-7 7" class="stroke" stroke="#735966"/>
+
+  <rect x="1080" y="878" width="208" height="52" rx="15" fill="#FFF7F8" stroke="#D9BEC8"/>
+  <text x="1184" y="910" class="ui label" text-anchor="middle">Back to event</text>
+  <text x="1516" y="910" class="ui faint small" text-anchor="end">Maison Crays</text>
+</svg>

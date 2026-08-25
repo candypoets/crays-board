@@ -1,0 +1,11 @@
+# BATTLE — prove an already-open subscription receives an independent event after EOSE.
+context platform=android timeout=480000
+env APP_ID=life.crays.board
+
+open "craysboard://qa-handoff?target=orders" --metro-port 8090
+wait "id=\"orders-screen\"" 60000
+wait "id=\"order-status-${AWARD_ID_PREFIX}-pending\"" 30000
+# Tablet columns stay visible; the card must move to Accepted without input.
+wait "id=\"order-status-${AWARD_ID_PREFIX}-accepted\"" 60000
+screenshot "${AD_ARTIFACTS}/10-orders-live-wake.png"
+close

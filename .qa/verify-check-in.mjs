@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Check-in scenario verifier (venue-commerce-nip §11 style, EVENT-10/11/12).
+ * Check-in scenario verifier (NIP-97 fulfillment, EVENT-10/11/12).
  * Proves relay truth independently of the rendered UI:
  *
  * - exactly one NEW kind 37237 references award_id (the valid presentation):
- *   status=fulfilled, context=event, exact d/e/a/p tags, staff (admin)
+ *   status=fulfilled, exact event/d/e/a/p tags, staff (admin)
  *   signer, valid signature, created_at not older than the award;
  * - exactly one 37237 references award2_id — the pre-seeded one — so the
  *   already-fulfilled rejection wrote nothing;
@@ -35,9 +35,10 @@ assert(forAward.length === 1, `exactly one 37237 references the valid award (${f
 const status = forAward[0];
 assert(status.id !== state.preseeded_status_id, 'the fulfilled status for the valid award is new');
 assert(tag(status, 'status') === 'fulfilled', 'status value is fulfilled');
-assert(tag(status, 'context') === 'event', 'status context is event');
-assert(tag(status, 'd') === state.award_id, 'd tag is the check-in context (award event id)');
-assert(tag(status, 'a') === state.product_address, 'a tag references the exact event-access definition address');
+assert(tag(status, 'event') === state.event_address, 'event tag is the active calendar coordinate');
+assert(tag(status, 'd') === `event:${state.event_address}`, 'd tag is the matching NIP-97 event context');
+assert(tag(status, 'e') === state.award_id, 'e tag references the exact award event id');
+assert(tag(status, 'a') === state.product_address, 'a tag references the exact ticket listing address');
 assert(tag(status, 'p') === state.user_pubkey, 'p tag is the fixture holder');
 assert(status.pubkey === state.admin_pubkey, 'status is signed by the staff (admin) pubkey');
 assert(verifyEvent(status), 'status event has a valid Nostr signature');
@@ -48,6 +49,14 @@ assert(status.created_at >= state.award_created_at, 'status created_at is not ol
 const forAward2 = statuses.filter((event) => tag(event, 'e') === state.award2_id);
 assert(forAward2.length === 1, `exactly one 37237 references the pre-fulfilled award (${forAward2.length} found)`);
 assert(forAward2[0].id === state.preseeded_status_id, 'the only status for the pre-fulfilled award is the pre-seeded one');
+assert(tag(forAward2[0], 'status') === 'fulfilled', 'pre-seeded status is fulfilled');
+assert(tag(forAward2[0], 'a') === state.product_address, 'pre-seeded status binds the exact ticket listing');
+assert(tag(forAward2[0], 'p') === state.user2_pubkey, 'pre-seeded status binds the exact second holder');
+assert(tag(forAward2[0], 'event') === state.event_address, 'pre-seeded status uses the same event coordinate');
+assert(tag(forAward2[0], 'd') === `event:${state.event_address}`, 'pre-seeded status d matches its event tag');
+assert(forAward2[0].pubkey === state.issuer_pubkey, 'pre-seeded status uses the delegated issuer slot');
+assert(verifyEvent(forAward2[0]), 'pre-seeded status has a valid Nostr signature');
+assert(forAward2[0].created_at >= state.award2_created_at, 'pre-seeded status does not predate its award');
 
 // Every rejection attempt (wrong event included) wrote nothing: the two
 // seeded/earned statuses are the entire 37237 log.
@@ -56,7 +65,7 @@ assert(statuses.length === 2, `exactly two 37237 events exist in total (${status
 // Device truth: the app projected the seeded event counts and logged the same
 // status event it published. Marker payloads are JSON per the fixed app
 // contract:
-//   [crays-board-check-in]        {"event": <31923 id>, "a": <definition address>, "expected": n, "checkedIn": n}
+//   [crays-board-check-in]        {"event": <31923 coordinate>, "expected": n, "checkedIn": n}
 //   [crays-board-check-in-status] {"id": <status event id>, "e": <award id>, "status": "fulfilled", "context": "event"}
 const log = execFileSync('adb', ['logcat', '-d'], { maxBuffer: 64 * 1024 * 1024 }).toString();
 const markerPayloads = (marker) =>
@@ -76,10 +85,10 @@ const markerPayloads = (marker) =>
     })
     .filter(Boolean);
 
-const projections = markerPayloads('[crays-board-check-in]').filter((entry) => entry.event === state.event_id);
+const projections = markerPayloads('[crays-board-check-in]').filter((entry) => entry.event === state.event_address);
 assert(projections.length > 0, 'app projected the seeded check-in event');
 assert(
-  projections.some((entry) => entry.a === state.product_address && entry.expected === 2 && entry.checkedIn === 1),
+  projections.some((entry) => entry.expected === 2 && entry.checkedIn === 1),
   'app projected the pre-check-in counts (2 expected, 1 checked in) from relay truth',
 );
 assert(

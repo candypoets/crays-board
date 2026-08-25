@@ -1,13 +1,14 @@
-import { extractTagValue, extractTagValues, type WorkerMessage } from "@candypoets/nipworker";
+import { extractTag, extractTagValue, type WorkerMessage } from "@candypoets/nipworker";
 import { useSubscription as subscribeToNostr } from "@candypoets/nipworker/hooks";
 import { isEoce, isParsedEvent } from "@candypoets/nipworker/utils";
 import { useEffect, useMemo, useState } from "react";
 import { AppState } from "react-native";
 
+import { isNewerAnchor, parseCommunityAnchor, parsePriceTag, type CommunityAnchor } from "@/access/nip97";
+import { fetchRelayRootPubkey, trustFromAnchor } from "@/access/trust";
 import { getNostrRuntime } from "@/nostr/manager";
-import { KIND_DEFINITION } from "@/nostr/protocol";
+import { KIND_ANCHOR, KIND_LISTING } from "@/nostr/protocol";
 import { useVenue } from "@/venue/VenueContext";
-import { fetchVenueTrust } from "@/venue/trust";
 
 import { projectMenu, type MenuDefinitionInput, type MenuSection } from "./fold";
 
@@ -17,35 +18,42 @@ export type MenuResult = {
   error?: string;
 };
 
+type MenuBuffer = {
+  /** Latest root-signed community anchor; trust derives from it. */
+  anchor: CommunityAnchor | null;
+};
+
 /**
  * Subscription coordinator for the menu catalog on the active venue relay.
- * Owns exactly one stable subscription (`board_menu_<sanitized relay>`, kind
- * 30009 only), extracts plain definition inputs at the worker boundary, and
- * folds them through the pure projection in fold.ts. Addressable replacement
- * is resolved as latest-per-address at extraction time; EOSE is the loaded
- * signal. Cleanup unsubscribes on unmount, venue change, and backgrounding.
+ * Owns exactly one stable subscription (`board_menu_<sanitized relay>`, kinds
+ * 30402 listings + the 31727 community anchor), extracts plain definition
+ * inputs at the worker boundary, and folds them through the pure projection
+ * in fold.ts. Addressable replacement is resolved as latest-per-address at
+ * extraction time; EOSE is the loaded signal. Cleanup unsubscribes on
+ * unmount, venue change, and backgrounding.
  */
 export function useMenu(): MenuResult {
   const { venue, restoring } = useVenue();
   const relayUrl = venue?.relayUrl;
-  const serviceUrl = venue?.serviceUrl;
 
-  const [trustedAuthors, setTrustedAuthors] = useState<ReadonlySet<string> | null>(null);
+  const [rootPubkey, setRootPubkey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [definitions, setDefinitions] = useState<Map<string, MenuDefinitionInput>>(new Map());
+  const [buffer, setBuffer] = useState<MenuBuffer>({ anchor: null });
 
-  // Author trust (venue-commerce-nip §1): venue authorities from the relay's
-  // NIP-11 document plus the badge issuer advertised by /community/info.
+  // NIP-97 trust bootstrap: the only out-of-band fact is the relay's NIP-11
+  // root key; the root-signed anchor learned over the subscription declares
+  // the admins whose listings may appear.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTrustedAuthors(null);
+    setRootPubkey(null);
     setError(null);
-    if (!relayUrl || !serviceUrl) return;
+    if (!relayUrl) return;
     let cancelled = false;
-    fetchVenueTrust(relayUrl, serviceUrl)
-      .then((trust) => {
-        if (!cancelled) setTrustedAuthors(trust.trustedIssuers);
+    fetchRelayRootPubkey(relayUrl)
+      .then((pubkey) => {
+        if (!cancelled) setRootPubkey(pubkey);
       })
       .catch((cause: unknown) => {
         if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
@@ -53,7 +61,7 @@ export function useMenu(): MenuResult {
     return () => {
       cancelled = true;
     };
-  }, [relayUrl, serviceUrl]);
+  }, [relayUrl]);
 
   // The single menu subscription. Opens after a small settle window because a
   // deep link foregrounds Android immediately before this effect runs and
@@ -62,8 +70,9 @@ export function useMenu(): MenuResult {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDefinitions(new Map());
+    setBuffer({ anchor: null });
     setLoaded(false);
-    if (!relayUrl) return;
+    if (!relayUrl || !rootPubkey) return;
     if (!getNostrRuntime().manager) {
       setError("The secure Nostr engine is unavailable. Use a Crays development build.");
       return;
@@ -90,36 +99,50 @@ export function useMenu(): MenuResult {
         return;
       }
       const event = isParsedEvent(message);
-      if (!event || event.kind() !== KIND_DEFINITION) return;
+      if (!event) return;
+
+      if (event.kind() === KIND_ANCHOR) {
+        const candidate = parseCommunityAnchor(event);
+        // Only the relay's own root key may define venue authorities.
+        if (!candidate || candidate.pubkey !== rootPubkey) return;
+        setBuffer((current) => {
+          if (current.anchor && !isNewerAnchor(candidate, current.anchor)) return current;
+          return { ...current, anchor: candidate };
+        });
+        return;
+      }
+
+      if (event.kind() !== KIND_LISTING) return;
       const d = extractTagValue(event, "d");
       const author = (event.pubkey() ?? "").toLowerCase();
       const id = event.id() ?? "";
       if (!d || !author || !id) return;
-      const address = `${KIND_DEFINITION}:${author}:${d}`;
+      const address = `${KIND_LISTING}:${author}:${d}`;
       const createdAt = event.createdAt();
 
       const position = Number(extractTagValue(event, "position"));
-      const maxUses = Number(extractTagValue(event, "max_uses"));
+      const parsedPrice = parsePriceTag(event);
       const definition: MenuDefinitionInput = {
         id,
         author,
         d,
         createdAt,
-        sellable: extractTagValues(event, "t").includes("sellable"),
-        ...(extractTagValue(event, "type") ? { type: extractTagValue(event, "type") } : {}),
-        ...(extractTagValue(event, "name") ? { name: extractTagValue(event, "name") } : {}),
+        ...(parsedPrice
+          ? { price: { amount: extractTag(event, "price")?.[1] ?? String(parsedPrice.amount), currency: parsedPrice.currency } }
+          : {}),
+        ...(extractTagValue(event, "title") ? { title: extractTagValue(event, "title") } : {}),
+        ...(extractTagValue(event, "summary") ? { summary: extractTagValue(event, "summary") } : {}),
         ...(extractTagValue(event, "description") ? { description: extractTagValue(event, "description") } : {}),
-        ...(extractTagValue(event, "price") ? { price: extractTagValue(event, "price") } : {}),
-        ...(extractTagValue(event, "currency") ? { currency: extractTagValue(event, "currency") } : {}),
+        ...(extractTagValue(event, "product_kind") ? { productKind: extractTagValue(event, "product_kind") } : {}),
         ...(extractTagValue(event, "availability") ? { availability: extractTagValue(event, "availability") } : {}),
         ...(extractTagValue(event, "section") ? { section: extractTagValue(event, "section") } : {}),
+        ...(extractTagValue(event, "a") ? { a: extractTagValue(event, "a") } : {}),
         ...(Number.isSafeInteger(position) ? { position } : {}),
-        ...(Number.isSafeInteger(maxUses) && maxUses > 0 ? { maxUses } : {}),
       };
 
       setDefinitions((current) => {
-        // §3.1 update rule: the latest addressable event wins; ties break by
-        // higher event id, so a replaced definition never flickers back.
+        // Addressable update rule: the latest event wins; ties break by
+        // higher event id, so a replaced listing never flickers back.
         const previous = current.get(address);
         if (
           previous &&
@@ -138,7 +161,7 @@ export function useMenu(): MenuResult {
         const subId = `board_menu_${relayUrl.replace(/[^a-z0-9]/gi, "_")}`;
         unsubscribe = subscribeToNostr(
           subId,
-          [{ kinds: [KIND_DEFINITION], relays: [relayUrl], limit: 500, noCache: true }],
+          [{ kinds: [KIND_LISTING, KIND_ANCHOR], relays: [relayUrl], limit: 500, noCache: true }],
           handleMessage,
           { closeOnEose: false },
         );
@@ -159,12 +182,14 @@ export function useMenu(): MenuResult {
       appStateSubscription.remove();
       stop();
     };
-  }, [relayUrl]);
+  }, [relayUrl, rootPubkey]);
+
+  const trust = useMemo(() => (buffer.anchor ? trustFromAnchor(buffer.anchor) : null), [buffer.anchor]);
 
   const sections = useMemo(() => {
-    if (!trustedAuthors) return [];
-    return projectMenu({ definitions: [...definitions.values()], trustedAuthors });
-  }, [trustedAuthors, definitions]);
+    if (!trust) return [];
+    return projectMenu({ definitions: [...definitions.values()], trust });
+  }, [trust, definitions]);
 
   // Fixed QA contract: one projection marker per visible item.
   useEffect(() => {
@@ -186,6 +211,6 @@ export function useMenu(): MenuResult {
   if (restoring) return { status: "loading", sections: [] };
   if (error) return { status: "error", sections: [], error };
   if (!venue) return { status: "ready", sections: [] };
-  if (!loaded || !trustedAuthors) return { status: "loading", sections: [] };
+  if (!loaded || !trust) return { status: "loading", sections: [] };
   return { status: "ready", sections };
 }
